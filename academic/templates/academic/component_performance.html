@@ -1,0 +1,632 @@
+{% extends 'academic/base.html' %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto">
+    <!-- Header Section -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Component Performance Analysis</h2>
+        <p class="text-gray-600">Analyze course component performance and grade distribution</p>
+    </div>
+
+    <!-- Filter Form -->
+    <form method="get" class="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200" id="performanceFilterForm">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Program Selection -->
+            <div>
+                <label for="program" class="block text-sm font-medium text-gray-700 mb-1">Program</label>
+                <select 
+                    id="program" 
+                    name="program" 
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    onchange="updateYears()">
+                    <option value="">Select Program</option>
+                    {% for program in programs %}
+                        <option value="{{ program }}" 
+                                {% if program == selected_program %}selected{% endif %}>
+                            {{ program }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Year Selection -->
+            <div id="yearContainer" {% if not selected_program %}style="display:none;"{% endif %}>
+                <label for="year" class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <select 
+                    id="year" 
+                    name="year" 
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    onchange="updateCourses()">
+                    <option value="">Select Year</option>
+                    {% for year in years %}
+                        <option value="{{ year }}" 
+                                {% if year == selected_year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Course Selection -->
+            <div id="courseContainer" {% if not selected_year %}style="display:none;"{% endif %}>
+                <label for="course_code" class="block text-sm font-medium text-gray-700 mb-1">Course Code</label>
+                <select 
+                    id="course_code" 
+                    name="course_code" 
+                    class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    onchange="toggleComponentFilter()">
+                    <option value="">Select Course</option>
+                    {% for course in courses %}
+                        <option value="{{ course }}" 
+                                {% if course == selected_course %}selected{% endif %}>
+                            {{ course }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Evaluation Components Filter -->
+            <div id="componentContainer" {% if not selected_course %}style="display:none;"{% endif %}>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Evaluation Components</label>
+                <div class="grid grid-cols-2 md:grid-cols-2 gap-2">
+                    {% for component in evaluation_components %}
+                    <div>
+                        <input type="checkbox" id="{{ component }}" name="evaluation_components" value="{{ component }}" 
+                            {% if component in selected_components %}checked{% endif %}>
+                        <label for="{{ component }}" class="text-sm text-gray-600">{{ component }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex items-end md:col-span-4">
+                <button type="submit" 
+                    class="w-full md:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Chart Toggle Buttons -->
+    {% if component_performance and grade_distribution %}
+    <div class="mb-6">
+        <div class="flex flex-wrap justify-center gap-4">
+            <button type="button" data-chart="componentPerformanceChart" 
+                class="chart-toggle-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active">
+                Component Performance (Bar)
+            </button>
+            <button type="button" data-chart="gradeDistributionChart" 
+                class="chart-toggle-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Grade Distribution
+            </button>
+            <button type="button" data-chart="componentLineChart" 
+                class="chart-toggle-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Component Performance Trend (Line)
+            </button>
+            <button type="button" data-chart="rollNumberPerformanceChart" 
+                class="chart-toggle-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Roll Number Performance (Line)
+            </button>
+            <button type="button" data-chart="rollNumberScatterChart" 
+                class="chart-toggle-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Roll Number Performance (Scatter)
+            </button>
+            <button type="button" data-chart="componentRadarChart" 
+                class="chart-toggle-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Component Distribution (Radar)
+            </button>
+            <button type="button" data-chart="componentScatterChart" 
+                class="chart-toggle-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Component Score Distribution (Scatter)
+            </button>
+        </div>
+    </div>
+
+    <!-- Analysis Results with Chart Containers -->
+    <div class="grid md:grid-cols-2 gap-8 mb-8">
+        <!-- Charts with toggle functionality -->
+        <div class="md:col-span-2 w-full">
+            <!-- Component Performance Bar Chart -->
+            <div id="componentPerformanceChartContainer" class="chart-container">
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold mb-4">Component Performance (Bar)</h3>
+                    <canvas id="componentPerformanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Grade Distribution Pie Chart -->
+            <div id="gradeDistributionChartContainer" class="chart-container hidden">
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold mb-4">Grade Distribution</h3>
+                    <canvas id="gradeDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Component Performance Line Chart -->
+            <div id="componentLineChartContainer" class="chart-container hidden">
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold mb-4">Component Performance Trend (Line)</h3>
+                    <canvas id="componentLineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Roll Number Performance Line Chart -->
+            <div id="rollNumberPerformanceChartContainer" class="chart-container hidden">
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold mb-4">Roll Number Performance (Line)</h3>
+                    <canvas id="rollNumberPerformanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Roll Number Performance Scatter Chart -->
+            <div id="rollNumberScatterChartContainer" class="chart-container hidden">
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold mb-4">Roll Number Performance (Scatter)</h3>
+                    <canvas id="rollNumberScatterChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Component Distribution Radar Chart -->
+            <div id="componentRadarChartContainer" class="chart-container hidden">
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold mb-4">Component Distribution (Radar)</h3>
+                    <canvas id="componentRadarChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Component Score Distribution Scatter Chart -->
+            <div id="componentScatterChartContainer" class="chart-container hidden">
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold mb-4">Component Score Distribution (Scatter)</h3>
+                    <canvas id="componentScatterChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Add Chart Toggling Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const chartToggleButtons = document.querySelectorAll('.chart-toggle-btn');
+        const chartContainers = document.querySelectorAll('.chart-container');
+
+        chartToggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                chartToggleButtons.forEach(btn => {
+                    btn.classList.remove('bg-blue-700', 'ring-2', 'ring-blue-500', 'ring-offset-2');
+                    btn.classList.add('bg-blue-600');
+                });
+
+                // Add active state to clicked button
+                this.classList.remove('bg-blue-600');
+                this.classList.add('bg-blue-700', 'ring-2', 'ring-blue-500', 'ring-offset-2');
+
+                // Hide all chart containers
+                chartContainers.forEach(container => {
+                    container.classList.add('hidden');
+                });
+
+                // Show selected chart container
+                const targetChartId = this.getAttribute('data-chart');
+                const targetContainer = document.getElementById(`${targetChartId}Container`);
+                if (targetContainer) {
+                    targetContainer.classList.remove('hidden');
+                }
+            });
+        });
+    });
+     // Function to update years based on selected program
+    function updateYears() {
+        const programSelect = document.getElementById('program');
+        const yearContainer = document.getElementById('yearContainer');
+        const yearSelect = document.getElementById('year');
+        const courseContainer = document.getElementById('courseContainer');
+        const courseSelect = document.getElementById('course_code');
+        const componentContainer = document.getElementById('componentContainer');
+
+        // Reset dependent dropdowns
+        yearSelect.innerHTML = '<option value="">Select Year</option>';
+        courseSelect.innerHTML = '<option value="">Select Course</option>';
+        yearContainer.style.display = 'none';
+        courseContainer.style.display = 'none';
+        componentContainer.style.display = 'none';
+
+        if (programSelect.value) {
+            // AJAX call to fetch years for the selected program
+            fetch(`/academic/get-years/?program=${programSelect.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.years.forEach(year => {
+                        const option = document.createElement('option');
+                        option.value = year;
+                        option.textContent = year;
+                        yearSelect.appendChild(option);
+                    });
+                    yearContainer.style.display = 'block';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    }
+
+    // Function to update courses based on selected year and program
+    function updateCourses() {
+        const programSelect = document.getElementById('program');
+        const yearSelect = document.getElementById('year');
+        const courseContainer = document.getElementById('courseContainer');
+        const courseSelect = document.getElementById('course_code');
+        const componentContainer = document.getElementById('componentContainer');
+
+        // Reset dependent dropdowns
+        courseSelect.innerHTML = '<option value="">Select Course</option>';
+        courseContainer.style.display = 'none';
+        componentContainer.style.display = 'none';
+
+        if (programSelect.value && yearSelect.value) {
+            // AJAX call to fetch courses for the selected program and year
+            fetch(`/academic/get-courses/?program=${programSelect.value}&year=${yearSelect.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.courses.forEach(course => {
+                        const option = document.createElement('option');
+                        option.value = course;
+                        option.textContent = course;
+                        courseSelect.appendChild(option);
+                    });
+                    courseContainer.style.display = 'block';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    }
+
+    // Function to toggle component filter visibility
+    function toggleComponentFilter() {
+        const courseSelect = document.getElementById('course_code');
+        const componentContainer = document.getElementById('componentContainer');
+
+        if (courseSelect.value) {
+            // AJAX call to fetch evaluation components for the selected course
+            fetch(`/academic/get-components/?program=${document.getElementById('program').value}&course=${courseSelect.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    const componentContainer = document.getElementById('componentContainer');
+                    const componentDiv = componentContainer.querySelector('div.grid');
+                    componentDiv.innerHTML = ''; // Clear existing components
+
+                    data.components.forEach(component => {
+                        const div = document.createElement('div');
+                        div.innerHTML = `
+                            <input type="checkbox" id="${component}" name="evaluation_components" value="${component}">
+                            <label for="${component}" class="text-sm text-gray-600">${component}</label>
+                        `;
+                        componentDiv.appendChild(div);
+                    });
+                    
+                    componentContainer.style.display = 'block';
+                })
+                .catch(error => console.error('Error:', error));
+        } else {
+            componentContainer.style.display = 'none';
+        }
+    }
+    {% if line_chart_data %}
+// Line Chart for Roll Number Performance
+const rollNumberCtx = document.getElementById('rollNumberPerformanceChart').getContext('2d');
+
+// Generate colors for each dataset
+function generateDatasetColors(index) {
+    const colors = [
+        'rgba(75, 192, 192, 1)',   // Teal
+        'rgba(255, 99, 132, 1)',   // Pink
+        'rgba(54, 162, 235, 1)',   // Blue
+        'rgba(255, 206, 86, 1)',   // Yellow
+        'rgba(153, 102, 255, 1)',  // Purple
+        'rgba(255, 159, 64, 1)',   // Orange
+        'rgba(46, 204, 113, 1)',   // Green
+        'rgba(231, 76, 60, 1)'     // Red
+    ];
+    return colors[index % colors.length];
+}
+
+// Create datasets array with different colors for each component
+const datasets = {{ line_chart_data.datasets|safe }}.map((dataset, index) => {
+    const color = generateDatasetColors(index);
+    return {
+        label: dataset.label,
+        data: dataset.data,
+        borderColor: color,
+        backgroundColor: color.replace('1)', '0.1)'),
+        borderWidth: 2,
+        tension: 0.4,
+        fill: false
+    };
+});
+
+new Chart(rollNumberCtx, {
+    type: 'line',
+    data: {
+        labels: {{ line_chart_data.roll_numbers|safe }},
+        datasets: datasets
+    },
+    options: {
+        responsive: true,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: 'Roll Number'
+                },
+                ticks: {
+                    maxTicksLimit: 20 // Limit the number of x-axis labels for better readability
+                }
+            },
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Marks'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20
+                }
+            },
+            tooltip: {
+                mode: 'index',
+                intersect: false
+            }
+        }
+    }
+});
+{% endif %}
+    {% if component_performance and selected_components %}
+    // Utility function to generate random colors
+    function generateColors(count) {
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            const hue = (i * 137.508) % 360; // Use golden angle approximation
+            colors.push(`hsla(${hue}, 70%, 60%, 0.6)`);
+        }
+        return colors;
+    }
+
+    // Common data
+    const labels = {{ component_performance.labels|safe }};
+    const data = {{ component_performance.data|safe }};
+    const colors = generateColors(labels.length);
+
+    // Bar Chart
+    const componentCtx = document.getElementById('componentPerformanceChart').getContext('2d');
+    new Chart(componentCtx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Average Marks',
+                data: data,
+                backgroundColor: colors,
+                borderColor: colors.map(color => color.replace('0.6', '1')),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Average Marks'
+                    }
+                }
+            }
+        }
+    });
+
+    // Line Chart
+    const lineCtx = document.getElementById('componentLineChart').getContext('2d');
+    new Chart(lineCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Performance Trend',
+                data: data,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Average Marks'
+                    }
+                }
+            }
+        }
+    });
+
+    // Radar Chart
+    const radarCtx = document.getElementById('componentRadarChart').getContext('2d');
+    new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Component Distribution',
+                data: data,
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgba(54, 162, 235, 1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    min: 0,
+                    max: Math.max(...data) + 10
+                }
+            }
+        }
+    });
+
+    // Scatter Chart
+    const scatterData = labels.map((label, index) => ({
+        x: index + 1,
+        y: data[index]
+    }));
+
+    const scatterCtx = document.getElementById('componentScatterChart').getContext('2d');
+    new Chart(scatterCtx, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Component Scores',
+                data: scatterData,
+                backgroundColor: colors,
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Component Index'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Average Marks'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const point = context.raw;
+                            return `${labels[point.x - 1]}: ${point.y}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+
+
+    {% if scatter_chart_data %}
+// Scatter Chart for Roll Number Performance
+const scatterRollCtx = document.getElementById('rollNumberScatterChart').getContext('2d');
+
+// Create datasets with different colors
+const scatterDatasets = {{ scatter_chart_data.datasets|safe }}.map((dataset, index) => {
+    const color = generateDatasetColors(index);
+    return {
+        label: dataset.label,
+        data: dataset.data,
+        backgroundColor: color.replace('1)', '0.5)'),
+        borderColor: color,
+        pointRadius: 5,
+        pointHoverRadius: 8
+    };
+});
+
+new Chart(scatterRollCtx, {
+    type: 'scatter',
+    data: {
+        datasets: scatterDatasets
+    },
+    options: {
+        responsive: true,
+        scales: {
+            x: {
+                type: 'category',
+                position: 'bottom',
+                title: {
+                    display: true,
+                    text: 'Roll Number'
+                },
+                ticks: {
+                    maxTicksLimit: 20 // Limit the number of x-axis labels for better readability
+                }
+            },
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'Marks'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const point = context.parsed;
+                        return `Roll No: ${point.x}, Marks: ${point.y}`;
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+    {% if grade_distribution %}
+    // Grade Distribution Pie Chart
+    const gradeCtx = document.getElementById('gradeDistributionChart').getContext('2d');
+    new Chart(gradeCtx, {
+        type: 'pie',
+        data: {
+            labels: {{ grade_distribution.labels|safe }},
+            datasets: [{
+                data: {{ grade_distribution.data|safe }},
+                backgroundColor: generateColors({{ grade_distribution.labels|length }})
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

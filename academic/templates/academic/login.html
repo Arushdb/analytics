@@ -1,0 +1,55 @@
+{% extends 'academic/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">Login</h2>
+        
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            
+            <div>
+                {{ form.username.label_tag }}
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div class="text-red-500 text-sm mt-1">
+                        {% for error in form.username.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div>
+                {{ form.password.label_tag }}
+                {{ form.password }}
+                {% if form.password.errors %}
+                    <div class="text-red-500 text-sm mt-1">
+                        {% for error in form.password.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <button 
+                type="submit" 
+                class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out"
+            >
+                Sign In
+            </button>
+        </form>
+        
+        {% if messages %}
+            <div class="mt-4">
+                {% for message in messages %}
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

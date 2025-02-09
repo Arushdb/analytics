@@ -1,0 +1,557 @@
+{% extends 'academic/base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto">
+    <!-- Header Section -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Academic Results</h2>
+        <p class="text-gray-600">Filter results step by step: Program → Year → Course → PCK</p>
+    </div>
+
+    <!-- Filter Form -->
+    <form method="get" id="filterForm" class="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <!-- Program Selection -->
+            <div>
+                <label for="program" class="block text-sm font-medium text-gray-700 mb-1">Program</label>
+                <select name="program" id="program" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select Program</option>
+                    {% for program in programs %}
+                        <option value="{{ program }}" {% if program == selected_program %}selected{% endif %}>
+                            {{ program }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Year Selection -->
+            {% if selected_program and years %}
+            <div>
+                <label for="year" class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <select name="year" id="year" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select Year</option>
+                    {% for year in years %}
+                        <option value="{{ year }}" {% if year|stringformat:"i" == selected_year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <!-- Course Selection -->
+            {% if selected_year and courses %}
+            <div>
+                <label for="course_code" class="block text-sm font-medium text-gray-700 mb-1">Course Code</label>
+                <select name="course_code" id="course_code" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select Course</option>
+                    {% for course in courses %}
+                        <option value="{{ course }}" {% if course == selected_course %}selected{% endif %}>
+                            {{ course }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <!-- PCK Selection -->
+            {% if selected_course and pcks %}
+            <div>
+                <label for="pck" class="block text-sm font-medium text-gray-700 mb-1">PCK</label>
+                <select name="pck" id="pck" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">All PCKs</option>
+                    {% for pck in pcks %}
+                        <option value="{{ pck }}" {% if pck == selected_pck %}selected{% endif %}>
+                            {{ pck }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="flex items-end">
+                <button type="submit" class="w-full md:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Evaluation Component Filter Section -->
+    {% if selected_course and eval_components %}
+    <div class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <h3 class="text-lg font-semibold mb-3">Select Evaluation Components to Display</h3>
+        <div class="mb-3">
+            <div class="flex items-center space-x-2">
+                <input type="checkbox"
+                       id="selectAll"
+                       class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                       onchange="handleSelectAll()">
+                <label for="selectAll" class="text-sm font-medium text-gray-700">Select All</label>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {% for component in eval_components %}
+            <div class="flex items-center space-x-2">
+                <input type="checkbox"
+                       id="eval_{{ component }}"
+                       name="eval_components"
+                       value="{{ component }}"
+                       {% if component in selected_components %}checked{% endif %}
+                       class="component-checkbox rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                       onchange="handleComponentChange()">
+                <label for="eval_{{ component }}" class="text-sm text-gray-700">{{ component }}</label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Enhanced Analysis Charts Section -->
+    {% if selected_course and selected_components %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Original Component Performance Chart -->
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-4">
+                {% if selected_pck %}
+                    Component Performance for PCK: {{ selected_pck }}
+                {% else %}
+                    Component Performance by PCK
+                {% endif %}
+            </h3>
+            <canvas id="evaluationChart" height="300"></canvas>
+        </div>
+
+        <!-- Grade Distribution Chart -->
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-4">Grade Distribution</h3>
+            <canvas id="gradeDistributionChart" height="300"></canvas>
+        </div>
+
+        <!-- Component Performance Trend -->
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-4">Component Performance Trend</h3>
+            <canvas id="performanceTrendChart" height="300"></canvas>
+        </div>
+
+        <!-- Roll Number Performance Line Chart -->
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-4">Roll Number Performance Trend</h3>
+            <canvas id="rollNumberTrendChart" height="300"></canvas>
+        </div>
+
+        <!-- Component Distribution Radar -->
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-4">Component Distribution</h3>
+            <canvas id="componentRadarChart" height="300"></canvas>
+        </div>
+
+        <!-- Component Score Distribution Scatter
+        <div class="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 class="text-lg font-semibold mb-4">Component Score Distribution</h3>
+            <canvas id="scoreScatterChart" height="300"></canvas>
+        </div>
+    </div> -->
+    {% endif %}
+
+    <script>
+        let charts = {
+            evaluation: null,
+            gradeDistribution: null,
+            performanceTrend: null,
+            rollNumberTrend: null,
+            componentRadar: null,
+            scoreScatter: null
+        };
+
+        const chartData = {{ chart_data|safe|default:"[]" }};
+        const gradeData = {{ grade_data|safe|default:"[]" }};
+        const trendData = {{ trend_data|safe|default:"[]" }};
+        const rollData = {{ roll_data|safe|default:"[]" }};
+        const componentData = {{ component_data|safe|default:"[]" }};
+        const scatterData = {{ scatter_data|safe|default:"[]" }};
+        const selectedPck = "{{ selected_pck|default:'' }}";
+
+        function handleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const componentCheckboxes = document.querySelectorAll('.component-checkbox');
+
+            componentCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+
+            handleComponentChange();
+        }
+
+        function updateSelectAllState() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const componentCheckboxes = document.querySelectorAll('.component-checkbox');
+            const checkedBoxes = document.querySelectorAll('.component-checkbox:checked');
+
+            selectAllCheckbox.checked = componentCheckboxes.length === checkedBoxes.length;
+        }
+
+        function handleComponentChange() {
+            const selectedComponents = Array.from(document.querySelectorAll('input[name="eval_components"]:checked'))
+                .map(checkbox => checkbox.value);
+
+            updateSelectAllState();
+
+            let form = document.getElementById('filterForm');
+            form.querySelectorAll('input[name="eval_components"][type="hidden"]').forEach(el => el.remove());
+
+            selectedComponents.forEach(component => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'eval_components';
+                input.value = component;
+                form.appendChild(input);
+            });
+
+            updateChart(selectedComponents);
+
+            if (selectedComponents.length > 0 || document.querySelectorAll('.component-checkbox').length > 0) {
+                form.submit();
+            }
+        }
+
+        function updateChart(selectedComponents) {
+            if (charts.evaluation) {
+                charts.evaluation.destroy();
+            }
+
+            const filteredData = chartData.filter(item =>
+                selectedComponents.includes(item.component)
+            );
+
+            if (filteredData.length === 0) {
+                return;
+            }
+
+            const ctx = document.getElementById('evaluationChart').getContext('2d');
+
+            if (selectedPck) {
+                // Single PCK view
+                charts.evaluation = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: filteredData.map(item => item.component),
+                        datasets: [
+                            {
+                                label: 'Average Marks',
+                                data: filteredData.map(item => {
+                                    const pckData = item.pcks.find(p => p.pck === selectedPck);
+                                    return pckData ? pckData.average : 0;
+                                }),
+                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                borderColor: 'rgb(59, 130, 246)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Maximum Marks',
+                                data: filteredData.map(item => item.pcks[0].maximum),
+                                backgroundColor: 'rgba(107, 114, 128, 0.5)',
+                                borderColor: 'rgb(107, 114, 128)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Marks'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Evaluation Components'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            title: {
+                                display: true,
+                                text: `Performance Analysis for PCK: ${selectedPck}`
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Multiple PCK comparison view
+                const generateColors = (count) => {
+                    const colors = [];
+                    for (let i = 0; i < count; i++) {
+                        const hue = (i * 360 / count) % 360;
+                        colors.push(`hsla(${hue}, 70%, 50%, 0.7)`);
+                    }
+                    return colors;
+                };
+
+                const pcks = filteredData[0].pcks.map(p => p.pck);
+                const colors = generateColors(pcks.length);
+
+                const datasets = pcks.map((pck, index) => ({
+                    label: `PCK: ${pck}`,
+                    data: filteredData.map(item => {
+                        const pckData = item.pcks.find(p => p.pck === pck);
+                        return pckData ? pckData.average : 0;
+                    }),
+                    backgroundColor: colors[index],
+                    borderColor: colors[index].replace('0.7', '1'),
+                    borderWidth: 1
+                }));
+
+                datasets.push({
+                    label: 'Maximum Marks',
+                    data: filteredData.map(item => item.pcks[0].maximum),
+                    backgroundColor: 'rgba(128, 128, 128, 0.2)',
+                    borderColor: 'rgba(128, 128, 128, 1)',
+                    borderWidth: 1,
+                    type: 'line'
+                });
+
+                charts.evaluation = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: filteredData.map(item => item.component),
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Marks'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Evaluation Components'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            title: {
+                                display: true,
+                                text: 'PCK-wise Evaluation Component Performance Analysis'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function initializeCharts() {
+            // Initialize Grade Distribution Chart
+            const gradeCtx = document.getElementById('gradeDistributionChart').getContext('2d');
+            charts.gradeDistribution = new Chart(gradeCtx, {
+                type: 'bar',
+                data: {
+                    labels: gradeData.map(item => item.grade),
+                    datasets: [{
+                        label: 'Number of Students',
+                        data: gradeData.map(item => item.count),
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgb(75, 192, 192)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Number of Students' }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: 'Grade Distribution' }
+                    }
+                }
+            });
+
+            // Initialize Performance Trend Chart
+            const trendCtx = document.getElementById('performanceTrendChart').getContext('2d');
+            charts.performanceTrend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: trendData.labels,
+                    datasets: trendData.datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Average Score' }
+                        }
+                    }
+                }
+            });
+
+            // Initialize Roll Number Performance Line Chart
+            const rollCtx = document.getElementById('rollNumberTrendChart').getContext('2d');
+            charts.rollNumberTrend = new Chart(rollCtx, {
+                type: 'line',
+                data: {
+                    labels: rollData.labels,
+                    datasets: rollData.datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Average Score' }
+                        }
+                    }
+                }
+            });
+
+            // Initialize Component Distribution Radar Chart
+            const radarCtx = document.getElementById('componentRadarChart').getContext('2d');
+            charts.componentRadar = new Chart(radarCtx, {
+                type: 'radar',
+                data: {
+                    labels: componentData.labels,
+                    datasets: componentData.datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Score' }
+                        }
+                    }
+                }
+            });
+
+            // Initialize Component Score Distribution Scatter Chart
+            const scatterCtx = document.getElementById('scoreScatterChart').getContext('2d');
+            charts.scoreScatter = new Chart(scatterCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: scatterData.datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Component' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Score' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Replace the existing script section with this enhanced version
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('filterForm');
+    const programSelect = document.getElementById('program');
+    const yearSelect = document.getElementById('year');
+    const courseSelect = document.getElementById('course_code');
+    const pckSelect = document.getElementById('pck');
+
+    // Function to handle select change events
+    function handleSelectChange(event) {
+        // Get all select elements
+        const selects = form.querySelectorAll('select');
+        const currentIndex = Array.from(selects).indexOf(event.target);
+        
+        // Clear all dependent dropdowns
+        for (let i = currentIndex + 1; i < selects.length; i++) {
+            if (selects[i]) {
+                selects[i].innerHTML = '<option value="">Select Option</option>';
+                selects[i].disabled = true;
+            }
+        }
+        
+        // Submit form if the selected value is not empty
+        if (event.target.value) {
+            form.submit();
+        }
+    }
+
+    // Add change event listeners to all select elements
+    if (programSelect) {
+        programSelect.addEventListener('change', handleSelectChange);
+    }
+    if (yearSelect) {
+        yearSelect.addEventListener('change', handleSelectChange);
+    }
+    if (courseSelect) {
+        courseSelect.addEventListener('change', handleSelectChange);
+    }
+    if (pckSelect) {
+        pckSelect.addEventListener('change', handleSelectChange);
+    }
+
+    // Hide the submit button since we don't need it anymore
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.style.display = 'none';
+    }
+
+    // Initialize component checkboxes if they exist
+    const componentCheckboxes = document.querySelectorAll('.component-checkbox');
+    const selectedComponents = {{ selected_components|safe|default:"[]" }};
+
+    componentCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectedComponents.includes(checkbox.value);
+    });
+
+    updateSelectAllState();
+
+    if (chartData && chartData.length > 0 && selectedComponents.length > 0) {
+        updateChart(selectedComponents);
+    }
+
+    initializeCharts();
+});
+
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     const componentCheckboxes = document.querySelectorAll('.component-checkbox');
+        //     const selectedComponents = {{ selected_components|safe|default:"[]" }};
+
+        //     componentCheckboxes.forEach(checkbox => {
+        //         checkbox.checked = selectedComponents.includes(checkbox.value);
+        //     });
+
+        //     updateSelectAllState();
+
+        //     if (chartData && chartData.length > 0 && selectedComponents.length > 0) {
+        //         updateChart(selectedComponents);
+        //     }
+
+        //     initializeCharts();
+
+        //     console.log('Selected Components:', selectedComponents);
+        //     console.log('Chart Data:', chartData);
+        //     console.log('Selected PCK:', selectedPck);
+        // });
+    </script>
+{% endblock %}

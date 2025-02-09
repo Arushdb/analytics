@@ -1,0 +1,139 @@
+{% extends 'academic/base.html' %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto">
+    <!-- Header Section -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Academic Results</h2>
+        <p class="text-gray-600">Filter results step by step: Program → Year → Course</p>
+    </div>
+
+    <!-- Error Message -->
+    {% if error_message %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+        {{ error_message }}
+    </div>
+    {% endif %}
+
+    <!-- Filter Form -->
+    <form method="get" class="mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Program Selection -->
+            <div>
+                <label for="program" class="block text-sm font-medium text-gray-700 mb-1">Program</label>
+                <select name="program" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select Program</option>
+                    {% for program in programs %}
+                        <option value="{{ program }}" {% if program == selected_program %}selected{% endif %}>
+                            {{ program }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Year Selection -->
+            {% if selected_program and years %}
+            <div>
+                <label for="year" class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                <select name="year" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select Year</option>
+                    {% for year in years %}
+                        <option value="{{ year }}" {% if year|stringformat:"i" == selected_year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <!-- Course Selection -->
+            {% if selected_year and courses %}
+            <div>
+                <label for="course_code" class="block text-sm font-medium text-gray-700 mb-1">Course Code</label>
+                <select name="course_code" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Select Course</option>
+                    {% for course in courses %}
+                        <option value="{{ course }}" {% if course == selected_course %}selected{% endif %}>
+                            {{ course }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="flex items-end">
+                <button type="submit" class="w-full md:w-auto px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Apply Filters
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Results Section -->
+    {% if consolidated_data %}
+    <div class="overflow-x-auto bg-white rounded-lg border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Program</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll Number</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PCK</th>
+                    {% for eval in consolidated_data.0.evaluation_details %}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {{ eval.evaluation_name }}
+                    </th>
+                    {% endfor %}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Internal</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">External</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for result in consolidated_data %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.program_name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.program_type }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.roll_number }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.course_code }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.program_course_key }}</td>
+                    {% for eval in result.evaluation_details %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {{ eval.marks_obtained|default:'-' }}/{{ eval.maximum_marks }}
+                    </td>
+                    {% endfor %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.internal_marks|default:'-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.external_marks|default:'-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.total_marks|default:'-' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if result.grades == 'A' or result.grades == 'A-' %}
+                                bg-green-100 text-green-800
+                            {% elif result.grades == 'B' or result.grades == 'B-' %}
+                                bg-blue-100 text-blue-800
+                            {% elif result.grades == 'C' or result.grades == 'C-' %}
+                                bg-yellow-100 text-yellow-800
+                            {% else %}
+                                bg-gray-100 text-gray-800
+                            {% endif %}">
+                            {{ result.grades|default:'-' }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ result.credits_earned|default:'-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        {% if selected_course %}
+        <div class="text-center py-8 bg-gray-50 rounded-lg">
+            <p class="text-gray-500">No results found for the selected filters.</p>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
