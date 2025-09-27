@@ -26,6 +26,9 @@ SECRET_KEY = 'django-insecure-%$2(+7yg&toy^*%$s3%%e^vfxs4af43oz^58=4o(4os#-7gp&%
 DEBUG = True
 
 ALLOWED_HOSTS = []
+# settings.py
+X_FRAME_OPTIONS = 'ALLOWALL'  # (not recommended for prod security)
+
 
 
 # Application definition
@@ -77,9 +80,9 @@ WSGI_APPLICATION = 'academic_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',  # MySQL database backend
-        'NAME': 'test',                   # Your MySQL database name
+        'NAME': 'cms_live',                   # Your MySQL database name
         'USER': 'root',              # Your MySQL username
-        'PASSWORD':'test1234',          # Your MySQL password
+        'PASSWORD':'root',          # Your MySQL password
         'HOST': '127.0.0.1',                  # Host, default is localhost
         'PORT': '3306',                       # MySQL port, default is 3306
     }

@@ -1,0 +1,61 @@
+
+* {
+  transition: background-color 0.3s ease, color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+/* Dark mode styles */
+html.dark {
+  color-scheme: dark;
+}
+
+/* Background colors */
+html.dark body {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+html.dark .bg-white {
+  background-color: #2d2d2d;
+}
+html.dark .bg-gray-100 {
+  background-color: #1a1a1a;
+}
+html.dark .bg-gray-50 {
+  background-color: #2d2d2d;
+}
+html.dark .bg-blue-600 {
+  background-color: #1e40af;
+}
+
+/* Text colors */
+html.dark .text-gray-800 {
+  color: #ffffff;
+}
+html.dark .text-gray-700 {
+  color: #e5e5e5;
+}
+html.dark .text-gray-600 {
+  color: #d1d1d1;
+}
+
+/* Border colors */
+html.dark .border-gray-200 {
+  border-color: #404040;
+}
+html.dark .border-gray-300 {
+  border-color: #4a4a4a;
+}
+
+/* Form elements */
+html.dark select,
+html.dark input[type="text"],
+html.dark input[type="password"] {
+  background-color: #2d2d2d;
+  border-color: #4a4a4a;
+  color: #ffffff;
+}
+
+html.dark select option {
+  background-color: #2d2d2d;
+  color: #ffffff;
+}

@@ -1,0 +1,245 @@
+  <h2>{{ section_title }}</h2>
+  <form id="component-form">
+    <!-- Select All option -->
+    <div>
+      <input type="checkbox" id="select-all">
+      <label for="select-all">Select All</label>
+    </div>
+
+    <!-- Container where checkboxes will be injected -->
+  <div id="components-container" class="flex flex-row flex-wrap gap-4" data-api-url="{{ api_url }}">Loading...</div>
+
+    <button  class ="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"  type="submit">Submit</button>
+  </form>
+
+  <div class="grid md:grid-cols-2 gaclass ">
+            <!-- Charts with toggle functionality -->
+            <div class="md:col-span-2 w-full">
+              <!-- Component Performance Bar Chart -->
+              <select
+                id="chartTypeSelect"
+                class="border rounded px-2 py-1 mb-4"
+              >
+                <option value="avg">Average Marks(bar)</option>
+                <option value="grades">Grade Distribution(pie)</option>
+                <option value="pie">Pie Chart Grade Distribution</option>
+              </select>
+              <div
+                id="componentPerformanceChartContainer"
+                class="chart-container"
+              >
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                  <h3 class="text-lg font-semibold mb-4">
+                    Component Performance (Bar)
+                  </h3>
+                  <canvas id="componentPerformanceChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+  <div id="result"></div>
+
+  <script>
+    // Helper: Create a single checkbox
+    function makeCheckbox(component) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'component-item flex items-center gap-2';
+
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.id = `comp-${component.id}`;
+      input.name = 'components';
+      input.value = component.value || component.id;
+
+      const label = document.createElement('label');
+      label.htmlFor = input.id;
+      label.textContent = component.name;
+
+      wrapper.appendChild(input);
+      wrapper.appendChild(label);
+      return wrapper;
+    }
+
+    // Load components from API (now globally accessible)
+    async function loadComponents() {
+      const container = document.getElementById('components-container');
+      //const apiUrl = "{{ api_url|escapejs }}";
+      const apiUrl = container.dataset.apiUrl;
+
+       const subject = container.dataset.subject;
+        const pck = container.dataset.pck;
+        const year = container.dataset.yr;
+        
+               
+        console.log("Fetching data in load components", pck, year, subject);
+      if (!apiUrl) {
+        container.textContent = "API URL not provided.";
+        return;
+      }
+      container.textContent = 'Loading...';
+      try {
+
+        const res = await fetch(apiUrl); // Django API endpoint
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        container.innerHTML = '';
+        if (data.components && data.components.length > 0) {
+          data.components.forEach(c => {
+            container.appendChild(makeCheckbox(c));
+          });
+        } else {
+          container.textContent = 'No components found.';
+        }
+      } catch (err) {
+        container.textContent = 'Error loading components.';
+        console.error(err);
+      }
+    }
+    // Expose loadComponents globally for external triggering
+    window.loadComponents = loadComponents;
+
+    // Handle select all
+    function setupSelectAll() {
+      const selectAll = document.getElementById('select-all');
+      selectAll.addEventListener('change', () => {
+        const items = document.querySelectorAll('input[name="components"]');
+        items.forEach(i => { i.checked = selectAll.checked; });
+      });
+
+      // Keep select-all in sync
+      document.getElementById('components-container').addEventListener('change', (e) => {
+        if (e.target && e.target.name === 'components') {
+          const all = document.querySelectorAll('input[name="components"]');
+          const checked = document.querySelectorAll('input[name="components"]:checked');
+          selectAll.checked = all.length === checked.length;
+        }
+      });
+    }
+
+    // Handle form submission
+    
+    document.getElementById('component-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const checked = Array.from(document.querySelectorAll('input[name="components"]:checked'))
+                           .map(cb => cb.value);
+                           console.log("ev_comps",checked);
+      document.getElementById('result').textContent = 'Selected: ' + (checked.join(', ') || 'None');
+      const optionselected = document.getElementById("chartTypeSelect").value;
+      if(optionselected==="grades")
+        type="pie";
+      else if(optionselected==="avg")
+        type="bar";
+      else
+        type="line";
+      getcomponentdata({ components:checked, charttype: type || 'bar',markstype:optionselected });
+      document.getElementById('result').textContent = 'Selected: ' + (checked.join(', ') || 'None');
+    });
+
+  // Initialize (setupSelectAll always runs, loadComponents can be triggered externally)
+  setupSelectAll();
+
+  document
+        .getElementById("chartTypeSelect")
+        .addEventListener("change", function () {
+          type = this.value;
+          //renderChart(type);
+        });
+
+      // Example chart rendering function (using Chart.js)
+      function renderChart(charttype,markstype,data) {
+        
+        const ctx = document
+          .getElementById("componentPerformanceChart")
+          .getContext("2d");
+        // Destroy previous chart if needed
+        if (window.currentChart) window.currentChart.destroy();
+        // Example data
+
+        if(markstype==="grades")
+        {
+          console.log("Data for grades chart",data);
+          const gradesdata = {
+          labels: data.map(d => d.internal_grade), // e.g., ["A", "B", "C"]
+          datasets: [{ label: "Count", data:data.map(d => d.count)  }],
+        };
+        window.currentChart = new Chart(ctx, {
+          type: charttype, // 'bar', 'line', 'pie', etc.
+          data: gradesdata,
+          options: {},
+        });
+          return;
+        }
+
+        if(markstype==="avg"){
+          const avgdata = {
+          labels: data.avg_marks.map(d => d.name), // e.g., ["Component 1", "Component 2"]
+          datasets: [{ label: "Average", data:data.avg_marks.map(d => d.avg)  }],
+        };
+          window.currentChart = new Chart(ctx, {
+          type: charttype, // 'bar', 'line', 'pie', etc.
+          data: avgdata,
+          options: {},
+        });
+          return;
+        }
+        
+        
+      }
+
+ async function getcomponentdata({ components, charttype ,markstype } = {}) {
+        const params = new URLSearchParams();
+        const container = document.getElementById('components-container');
+        const subject = container.dataset.subject;
+        const pck = container.dataset.pck;
+        const year = container.dataset.yr;
+        const startdate = container.dataset.startdate;
+        const enddate = container.dataset.enddate;
+        const ev_comps = components;
+      
+       
+        
+                       
+     console.log("Fetching data for", pck, year, subject,ev_comps, startdate, enddate);
+        if (pck) params.set("pck", pck);
+        if (year) params.set("year", year);
+        if (subject) params.set("subject", subject);
+        if (ev_comps) params.set("components", ev_comps);
+        if (startdate) params.set("startdate", startdate);
+        if (enddate) params.set("enddate", enddate);
+       
+        let url="";
+        if  (markstype==="avg") 
+          url = `/academic/api/components_avg_marks?${params.toString()}`;
+        if  (markstype==="grades") 
+          url = `/academic/api/get_grades?${params.toString()}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+       
+          renderChart(charttype,markstype, data);
+        
+
+        const table = document.getElementById("studentsTableBody");
+
+        if (table) {
+          const tbody = table;
+          tbody.innerHTML = "";
+
+          data.avg_marks.forEach((s) => {
+            const tr = document.createElement("tr");
+            // adjust columns to match your student object
+            tr.innerHTML = `
+            <td>${s.name ?? ""}</td>
+            <td>${s.avg ?? ""}</td>
+                           `;
+            tbody.appendChild(tr);
+          });
+        }
+      }
+
+      //renderChart("bar");
+  </script>
+</body>
+</html>

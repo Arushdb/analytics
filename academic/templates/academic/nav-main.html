@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Nav Flow Mock — University Analytics (Filtered + Pagination)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-60 bg-blue-800 text-white p-4">
+      <div class="text-2xl font-bold mb-6">Univ Analytics</div>
+      <nav class="space-y-2">
+        <a href="#dashboard" class="block px-3 py-2 rounded hover:bg-blue-700"
+          >Dashboard</a
+        >
+        <a href="#students" class="block px-3 py-2 rounded hover:bg-blue-700"
+          >Students</a
+        >
+        <a href="#teachers" class="block px-3 py-2 rounded hover:bg-blue-700"
+          >Teachers</a
+        >
+        <a href="#reports" class="block px-3 py-2 rounded hover:bg-blue-700"
+          >Reports</a
+        >
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 p-6">
+      <!-- Top bar -->
+      <header class="flex items-center justify-between mb-6">
+        <h1 id="pageTitle" class="text-2xl font-semibold">Dashboard</h1>
+        <div class="text-sm text-gray-600">Demo user</div>
+      </header>
+
+      <!-- Views container -->
+      <div id="views">
+        <!-- Dashboard -->
+        <section id="view-dashboard">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+              Total Students<br /><strong>420</strong>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              Avg Attendance<br /><strong>82%</strong>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              Pass Rate<br /><strong>75%</strong>
+            </div>
+          </div>
+          <div class="bg-white p-6 rounded shadow">
+            Dashboard charts / KPIs (demo)
+          </div>
+        </section>
+
+        <!-- Students list with filters + pagination -->
+        <section id="view-students" class="hidden">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-xl font-semibold">Students</h2>
+            <div class="flex items-center gap-2">
+              <select
+                id="sessionSelect"
+                class="border rounded px-2 py-1 text-sm"
+              ></select>
+
+              <label for="program">Choose Program:</label>
+              <input
+                list="programList"
+                id="programInput"
+                name="program"
+                placeholder="Type to search..."
+              />
+              <input type="hidden" id="programId" name="program_id" />
+              <datalist id="programList"></datalist>
+              <input
+                id="subjectFilter"
+                type="text"
+                class="border rounded px-2 py-1 text-sm"
+                placeholder="Enter Subject code"
+                style="min-width: 140px; max-width: 260px"
+              />
+              <button
+                id="applyFilters"
+                class="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white rounded shadow overflow-hidden">
+            <table class="min-w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="p-3 text-left">Roll</th>
+                  <th class="p-3 text-left">Name</th>
+                  <th class="p-3 text-left">Program</th>
+                  <th class="p-3 text-left">semester</th>
+                  <th class="p-3 text-left">branch</th>
+                  <th class="p-3 text-left">spec</th>
+                  <th class="p-3 text-left">subject</th>
+                  <th class="p-3 text-left">Session</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Pagination controls -->
+          <div class="mt-3 flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+              Showing <span id="showingRange">0</span> of
+              <span id="totalCount">0</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <label for="pageSize" class="text-sm text-gray-600"
+                >Page size</label
+              >
+              <select id="pageSize" class="border rounded px-2 py-1 text-sm">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+              </select>
+              <button id="prevPage" class="px-2 py-1 border rounded">
+                Prev
+              </button>
+              <span id="currentPage" class="px-2">1</span>
+              <button id="nextPage" class="px-2 py-1 border rounded">
+                Next
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Program Detail -->
+        <section id="view-program" class="hidden">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 id="classLabel" class="text-xl font-semibold">Class: —</h2>
+              <p id="classMeta" class="text-sm text-gray-600">
+                Department • Program
+              </p>
+            </div>
+            <div>
+              <button
+                id="backToStudentsBtn"
+                class="text-sm text-blue-600 hover:underline"
+              >
+                Back to Students
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+              Students: <strong id="clsCount">—</strong>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              Avg %: <strong id="clsAvg">—</strong>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              Pass %: <strong id="clsPass">—</strong>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+              <h3 class="font-medium mb-2">Subjects</h3>
+              <div id="classSubjects" class="space-y-2"></div>
+            </div>
+
+            <div class="bg-white p-4 rounded shadow lg:col-span-2">
+              <h3 class="font-medium mb-2">Class Overview (charts)</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-3 bg-gray-50 rounded">
+                  <strong>Avg by Course (placeholder)</strong>
+                </div>
+                <div class="p-3 bg-gray-50 rounded">
+                  <strong>Pass Rate (placeholder)</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow mb-4">
+            <h3 class="font-medium mb-2">Students in Class</h3>
+            <table class="min-w-full">
+              <thead>
+                <tr>
+                  <th class="p-2 text-left">Roll</th>
+                  <th class="p-2 text-left">Name</th>
+                </tr>
+              </thead>
+              <tbody id="classStudentsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Subject Detail -->
+        <section id="view-subject" class="hidden">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 id="subjectLabel" class="text-xl font-semibold">
+                Subject — —
+              </h2>
+              <p id="subjectMeta" class="text-sm text-gray-600">
+                Class • Program
+              </p>
+            </div>
+            <div>
+              <button
+                id="backToClassFromSubject"
+                class="text-sm text-blue-600 hover:underline"
+              >
+                Back to Class
+              </button>
+            </div>
+          </div>
+          <!-- Include the partial and pass parameters -->
+      {% include "academic/components.html" with section_title="Student Evaluation"  %}
+
+          
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+              Avg %: <strong id="subAvg">—</strong>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              Median %: <strong id="subMedian">—</strong>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              Tests Count: <strong id="subTests">—</strong>
+            </div>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow mb-4">
+            <h3 class="font-medium mb-2">Students marks in this subject</h3>
+            <table class="min-w-full">
+              <thead>
+                <tr>
+                  <th class="p-2 text-left">Roll</th>
+                  <th class="p-2 text-left">Name</th>
+                  <th class="p-2 text-left">Avg %</th>
+                </tr>
+              </thead>
+              <tbody id="subjectStudentsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Student Detail -->
+        <section id="view-student" class="hidden">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 id="stuName" class="text-xl font-semibold">Student — —</h2>
+              <p id="stuMeta" class="text-sm text-gray-600">Roll • Program</p>
+            </div>
+            <div>
+              <a
+                id="backToClassLink"
+                class="text-sm text-blue-600 hover:underline"
+                href="#"
+                >Back to class</a
+              >
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white p-4 rounded shadow">
+              Latest % <strong id="stuPct">—</strong>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+              Attendance <strong id="stuAtt">—</strong>
+            </div>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow mt-4">
+            <h3 class="font-medium mb-2">Subject-wise Marks</h3>
+            <table class="min-w-full">
+              <thead>
+                <tr>
+                  <th class="p-2 text-left">Subject</th>
+                  <th class="p-2 text-left">Avg %</th>
+                </tr>
+              </thead>
+              <tbody id="studentSubjectsBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      window.csrfToken = "{{ csrf_token }}";
+      //let defaultSession="" ;
+      // create one global namespace (recommended)
+      window.academic = window.academic || {};
+      const Academic = window.academic;
+      
+      Academic.selected_pgmid = null;
+      Academic.selected_pgm = null;
+      Academic.selected_year = null;
+      Academic.subject = null;
+
+      // Inject it into the partial’s container dynamically
+
+      function onSessionChange(e) {
+        const sel = e.target;
+        selectedValue = sel.value; // e.g. "" or "2024"
+        Academic.selected_year = selectedValue ? selectedValue : "";
+        const selectedText = sel.options[sel.selectedIndex].text;
+        console.log(Academic.selected_year);
+      }
+      function onProgramChange(e) {
+        const pgminput = document.getElementById("programInput");
+
+        const datalist = document.getElementById("programList");
+
+        const selected = [...datalist.options].find(
+          (opt) => opt.value === pgminput.value
+        );
+        let id = selected ? selected.dataset.id : "";
+        let pgm = selected ? selected.value : "";
+        Academic.selected_pgmid = id;
+        Academic.selected_pgm = pgm;
+        console.log("selected program", pgm);
+        console.log("selected id", id);
+      }
+
+      function getsessions() {
+        const sessionSelect = document.getElementById("sessionSelect");
+        const opt = document.createElement("option");
+        opt.value = "All Sessions";
+        opt.textContent = "All Sessions";
+        sessionSelect.appendChild(opt);
+        // AJAX call to h courses for the selected program and year
+        fetch(`api/student/get-sessions/`)
+          .then((response) => response.json())
+          .then((data) => {
+            data.years.forEach((year) => {
+              const option = document.createElement("option");
+              option.value = year;
+
+              option.textContent = year;
+              sessionSelect.appendChild(option);
+            });
+
+            // Now add the change listener (after options exist)
+            sessionSelect.addEventListener("change", onSessionChange);
+
+            //courseContainer.style.display = 'block';
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      function getprograms() {
+        const datalist = document.getElementById("programList");
+        //const opt = document.createElement('option');
+        //opt.value="All";
+        //opt.textContent = "All Programs";
+        // programSelect.appendChild(opt);
+        // AJAX call to h courses for the selected program and year
+
+        fetch(`api/student/get-programs/`)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("programs", data.programs);
+
+            data.programs.forEach((pgm) => {
+              const option = document.createElement("option");
+              option.value = pgm.name;
+              option.setAttribute("data-id", pgm.id);
+
+              option.dataset.id = pgm.id;
+
+              datalist.appendChild(option);
+            });
+            // Handle selection
+            const pgminput = document.getElementById("programInput");
+            const pgmid = document.getElementById("programId");
+            pgminput.addEventListener("change", onProgramChange);
+
+            //pgminput.addEventListener("change", function() {
+            // const selected = [...datalist.options].find(opt => opt.value === pgminput.value);
+            // pgmid.value = selected ? selected.dataset.id : "";
+            // console.log("arush,selected program",pgmid.value); // save ID or clear
+            // });
+            //courseContainer.style.display = 'block';
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+      async function getstudents() {
+        const params = new URLSearchParams();
+        id = Academic.selected_pgmid;
+        year = Academic.selected_year;
+        let subjectSelect = document.getElementById("subjectFilter");
+
+        let subject = subjectSelect.value.trim();
+        subject = subject ? subject : "";
+        if (id) params.set("program_id", id);
+        if (year) params.set("year", year);
+        params.set("subject", subject);
+        params.set("limit", "50");
+        params.set("offset", "0");
+        const url = `/academic/login/api/student/get-students/?${params.toString()}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.students) {
+          console.log(data);
+        }
+
+        const table = document.getElementById("studentsTableBody");
+
+        if (table) {
+          const tbody = table;
+          tbody.innerHTML = "";
+
+          data.students.forEach((s) => {
+            const tr = document.createElement("tr");
+            // adjust columns to match your student object
+            tr.innerHTML = `
+            <td>${s.roll_number ?? ""}</td>
+            <td>${s.student_first_name ?? ""}</td>
+            <td>${Academic.selected_pgm ?? ""}</td>
+            <td>${s.semester_code ?? ""}</td>
+            <td>${s.branch_id ?? ""}</td>
+            <td>${s.specialization_id ?? ""}</td>
+            <td><a href="#subject/${s.program_course_key}/${
+              Academic.selected_year
+            }/${s.course_code}/${s.startdate}/${s.enddate}           " 
+              class="text-blue-600 hover:underline">${
+                s.course_code ?? ""
+              }</a></td>
+            <td>${Academic.selected_year ?? ""}</td>
+                         
+                `;
+            tbody.appendChild(tr);
+          });
+        }
+      }
+
+      // Demo data: students (this list can be small; real app will query server with filters)
+      const demoStudents = [
+        {
+          id: 1,
+          roll: "2022001",
+          name: "Amit Sharma",
+          program: "BSc CS",
+          program_id: 10,
+          year: 2022,
+        },
+        {
+          id: 2,
+          roll: "2022002",
+          name: "Bhavana K",
+          program: "BSc CS",
+          program_id: 10,
+          year: 2022,
+        },
+        {
+          id: 3,
+          roll: "2022003",
+          name: "Chetan L",
+          program: "BSc CS",
+          program_id: 10,
+          year: 2022,
+        },
+        {
+          id: 4,
+          roll: "2022004",
+          name: "Deepa R",
+          program: "BSc CS",
+          program_id: 10,
+          year: 2022,
+        },
+        {
+          id: 5,
+          roll: "2022005",
+          name: "Esha S",
+          program: "BSc CS",
+          program_id: 10,
+          year: 2022,
+        },
+        {
+          id: 6,
+          roll: "2023001",
+          name: "Chirag P",
+          program: "BSc IT",
+          program_id: 11,
+          year: 2023,
+        },
+        {
+          id: 7,
+          roll: "2023002",
+          name: "Divya M",
+          program: "BSc IT",
+          program_id: 11,
+          year: 2023,
+        },
+        {
+          id: 8,
+          roll: "2023003",
+          name: "Evan T",
+          program: "BSc IT",
+          program_id: 11,
+          year: 2023,
+        },
+        {
+          id: 9,
+          roll: "2023004",
+          name: "Farah Z",
+          program: "BSc IT",
+          program_id: 11,
+          year: 2023,
+        },
+        {
+          id: 10,
+          roll: "2023005",
+          name: "Gopal R",
+          program: "BSc IT",
+          program_id: 11,
+          year: 2023,
+        },
+        // add more if you want to test pagination
+      ];
+
+      // Demo programs list
+      const demoPrograms = [
+        { id: 10, name: "BSc CS" },
+        { id: 11, name: "BSc IT" },
+      ];
+
+      // Demo subjects by program
+      const demoSubjects = {
+        10: [
+          // program_id 10 (BSc CS)
+          { id: 101, name: "Mathematics" },
+          { id: 102, name: "Data Structures" },
+          { id: 103, name: "Database Systems" },
+        ],
+        11: [
+          // program_id 11 (BSc IT)
+          { id: 201, name: "Mathematics" },
+          { id: 202, name: "Networking" },
+          { id: 203, name: "Web Development" },
+        ],
+      };
+
+      // Demo scores: each entry = {student_id, subject_id, marks_percent}
+      const demoScores = [
+        // for program 10 students
+        { student_id: 1, subject_id: 101, percent: 78 },
+        { student_id: 1, subject_id: 102, percent: 82 },
+        { student_id: 1, subject_id: 103, percent: 69 },
+        { student_id: 2, subject_id: 101, percent: 74 },
+        { student_id: 2, subject_id: 102, percent: 65 },
+        { student_id: 2, subject_id: 103, percent: 71 },
+        { student_id: 3, subject_id: 101, percent: 81 },
+        { student_id: 4, subject_id: 102, percent: 59 },
+        { student_id: 5, subject_id: 103, percent: 88 },
+
+        // program 11 students
+        { student_id: 6, subject_id: 201, percent: 85 },
+        { student_id: 6, subject_id: 202, percent: 79 },
+        { student_id: 6, subject_id: 203, percent: 88 },
+        { student_id: 7, subject_id: 201, percent: 68 },
+        { student_id: 7, subject_id: 202, percent: 72 },
+        { student_id: 8, subject_id: 203, percent: 70 },
+        { student_id: 9, subject_id: 201, percent: 73 },
+        { student_id: 10, subject_id: 202, percent: 66 },
+      ];
+
+      // derive sessions (years) available and default to latest
+      //const sessions = Array.from(new Set(demoStudents.map(s=>s.year))).sort();
+      //const sessions =  getsessions();
+      //console.log(sessions);
+      //const defaultSession = sessions.length ? sessions[sessions.length-1] : null;
+      const defaultProgram = demoPrograms.length ? demoPrograms[0].id : null;
+
+      // pagination state
+      let currentPage = 1;
+      let pageSize = 10;
+      let filteredList = [];
+
+      const views = {
+        dashboard: document.getElementById("view-dashboard"),
+        students: document.getElementById("view-students"),
+        program: document.getElementById("view-program"),
+        subject: document.getElementById("view-subject"),
+        student: document.getElementById("view-student"),
+      };
+
+      function hideAll() {
+        Object.values(views).forEach((v) => v.classList.add("hidden"));
+      }
+      function showView(name) {
+        hideAll();
+        views[name].classList.remove("hidden");
+        document.getElementById("pageTitle").textContent =
+          name.charAt(0).toUpperCase() + name.slice(1);
+      }
+
+      // populate filter selects
+      function populateFilters() {
+        //populateSubjectFilterForProgram(defaultProgram);
+      }
+
+      function populateSubjectFilterForProgram(progId) {
+        const subjectSelect = document.getElementById("subjectFilter");
+        subjectSelect.innerHTML = "";
+        // allow multiple selection; add placeholder option when none selected
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "All Subjects";
+        subjectSelect.appendChild(placeholder);
+        if (!progId) return;
+        const subs = demoSubjects[progId] || [];
+        subs.forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.name;
+          subjectSelect.appendChild(opt);
+        });
+      }
+
+      // apply filters -> compute filteredList and show first page
+      function applyFiltersAndRender() {
+        getstudents();
+        const session = document.getElementById("sessionSelect").value || null;
+        const program = document.getElementById("programInput").value || null;
+        const subjectSelect = document.getElementById("subjectFilter");
+        // gather selected subject ids (skip empty placeholder)
+        // const subjectIds = Array.from(subjectSelect.selectedOptions)
+        //  .map((o) => o.value)
+        //  .filter((v) => v !== "")
+        //  .map((v) => parseInt(v));
+
+        // filter list
+        // let list = demoStudents.slice();
+        //if (session) list = list.filter((s) => s.year == parseInt(session));
+        //if (program)
+        //  list = list.filter((s) => s.program_id == parseInt(program));
+        //if (subjectIds.length) {
+        // const studentIdsWithSubjects = new Set(
+        //   demoScores
+        //     .filter((ds) => subjectIds.includes(ds.subject_id))
+        //    .map((ds) => ds.student_id)
+        //);
+        //  list = list.filter((s) => studentIdsWithSubjects.has(s.id));
+        // }
+
+        //filteredList = list;
+        //currentPage = 1;
+        // pageSize = parseInt(document.getElementById("pageSize").value);
+        // renderPage();
+      }
+
+      function renderPage() {
+        const tbody = document.getElementById("studentsTableBody");
+        tbody.innerHTML = "";
+        const total = filteredList.length;
+        document.getElementById("totalCount").textContent = total;
+        if (total === 0) {
+          tbody.innerHTML =
+            '<tr><td class="p-4" colspan="4" style="color:#6b7280">No students match the selected filters.</td></tr>';
+          document.getElementById("showingRange").textContent = "0-0";
+          document.getElementById("currentPage").textContent = "1";
+          return;
+        }
+        const start = (currentPage - 1) * pageSize;
+        const end = Math.min(start + pageSize, total);
+        const pageItems = filteredList.slice(start, end);
+        pageItems.forEach((s) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+          <td class="p-3 text-sm"><a href="#student/${s.id}" class="text-blue-600 hover:underline">${s.roll}</a></td>
+          <td class="p-3 text-sm">${s.name}</td>
+          <td class="p-3 text-sm"><a href="#class/${s.program_id}/${s.year}" class="text-blue-600 hover:underline">${s.program}</a></td>
+          <td class="p-3 text-sm">${s.year}</td>
+        `;
+          tbody.appendChild(tr);
+        });
+        document.getElementById("showingRange").textContent = `${
+          start + 1
+        }-${end}`;
+        document.getElementById("currentPage").textContent = currentPage;
+        document.getElementById("totalCount").textContent = total;
+        // disable/enable buttons
+        document.getElementById("prevPage").disabled = currentPage <= 1;
+        document.getElementById("nextPage").disabled = end >= total;
+      }
+
+      // class, subject, student render functions (unchanged from before)
+      function renderClass(programId, year) {
+        const students = demoStudents.filter(
+          (s) => s.program_id == programId && s.year == year
+        );
+        document.getElementById("classLabel").textContent = `Class: ${
+          students.length ? students[0].program : "Unknown"
+        } — ${year}`;
+        document.getElementById(
+          "classMeta"
+        ).textContent = `Program ID ${programId}`;
+        document.getElementById("clsCount").textContent = students.length;
+        const scores = demoScores.filter((ds) =>
+          students.some((st) => st.id === ds.student_id)
+        );
+        const avg = scores.length
+          ? Math.round(
+              scores.reduce((s, v) => s + v.percent, 0) / scores.length
+            )
+          : "—";
+        const passpct = scores.length
+          ? Math.round(
+              (scores.filter((x) => x.percent >= 40).length / scores.length) *
+                100
+            )
+          : "—";
+        document.getElementById("clsAvg").textContent =
+          avg !== "—" ? avg + "%" : "—";
+        document.getElementById("clsPass").textContent =
+          passpct !== "—" ? passpct + "%" : "—";
+
+        const subs = demoSubjects[programId] || [];
+        const subContainer = document.getElementById("classSubjects");
+        subContainer.innerHTML = "";
+        subs.forEach((sub) => {
+          const subScores = demoScores.filter(
+            (ds) =>
+              ds.subject_id === sub.id &&
+              students.some((st) => st.id === ds.student_id)
+          );
+          const subAvg = subScores.length
+            ? Math.round(
+                subScores.reduce((s, v) => s + v.percent, 0) / subScores.length
+              )
+            : "—";
+          const a = document.createElement("div");
+          a.className = "p-2 border rounded flex items-center justify-between";
+          a.innerHTML = `<div><strong>${
+            sub.name
+          }</strong><div class="text-xs text-gray-600">Avg: ${
+            subAvg !== "—" ? subAvg + "%" : "—"
+          }</div></div>
+                       <div><a class="text-blue-600 hover:underline" href="#subject/${programId}/${year}/${
+            sub.id
+          }">Open</a></div>`;
+          subContainer.appendChild(a);
+        });
+
+        const tbody = document.getElementById("classStudentsBody");
+        tbody.innerHTML = "";
+        students.forEach((s) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td class="p-2"><a href="#student/${s.id}" class="text-blue-600 hover:underline">${s.roll}</a></td><td class="p-2">${s.name}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderSubject(programId, year, subjectId) {
+        const subs = demoSubjects[programId] || [];
+        const subject = subs.find((x) => x.id === subjectId);
+        const students = demoStudents.filter(
+          (s) => s.program_id == programId && s.year == year
+        );
+        document.getElementById("subjectLabel").textContent = `${
+          subject ? subject.name : "Subject"
+        } — ${year}`;
+        document.getElementById(
+          "subjectMeta"
+        ).textContent = `${students.length} students • Program ${programId}`;
+        const subScores = demoScores.filter(
+          (ds) =>
+            ds.subject_id === subjectId &&
+            students.some((st) => st.id === ds.student_id)
+        );
+        const avg = subScores.length
+          ? Math.round(
+              subScores.reduce((s, v) => s + v.percent, 0) / subScores.length
+            )
+          : "—";
+        const sorted = subScores.map((s) => s.percent).sort((a, b) => a - b);
+        const median = sorted.length
+          ? sorted[Math.floor(sorted.length / 2)]
+          : "—";
+        document.getElementById("subAvg").textContent =
+          avg !== "—" ? avg + "%" : "—";
+        document.getElementById("subMedian").textContent =
+          median !== "—" ? median + "%" : "—";
+        document.getElementById("subTests").textContent = subScores.length
+          ? new Set(subScores.map((s) => s.subject_id)).size
+          : 1;
+
+        const tbody = document.getElementById("subjectStudentsBody");
+        tbody.innerHTML = "";
+        students.forEach((st) => {
+          const stScores = demoScores.filter(
+            (ds) => ds.student_id === st.id && ds.subject_id === subjectId
+          );
+          const stAvg = stScores.length
+            ? Math.round(
+                stScores.reduce((s, v) => s + v.percent, 0) / stScores.length
+              )
+            : "—";
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td class="p-2"><a href="#student/${
+            st.id
+          }" class="text-blue-600 hover:underline">${
+            st.roll
+          }</a></td><td class="p-2">${st.name}</td><td class="p-2">${
+            stAvg !== "—" ? stAvg + "%" : "—"
+          }</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderStudent(id) {
+        const s = demoStudents.find((x) => x.id == id);
+        if (!s) return;
+        document.getElementById("stuName").textContent = `${s.name}`;
+        document.getElementById(
+          "stuMeta"
+        ).textContent = `${s.roll} • ${s.program} — ${s.year}`;
+        const sScoresAll = demoScores.filter((ds) => ds.student_id === s.id);
+        const overall = sScoresAll.length
+          ? Math.round(
+              sScoresAll.reduce((a, b) => a + b.percent, 0) / sScoresAll.length
+            )
+          : "—";
+        document.getElementById("stuPct").textContent =
+          overall !== "—" ? overall + "%" : "—";
+        document.getElementById("stuAtt").textContent =
+          70 + Math.floor(Math.random() * 20) + "%";
+        const subs = demoSubjects[s.program_id] || [];
+        const tbody = document.getElementById("studentSubjectsBody");
+        tbody.innerHTML = "";
+        subs.forEach((sub) => {
+          const sc = demoScores.filter(
+            (ds) => ds.student_id === s.id && ds.subject_id === sub.id
+          );
+          const avg = sc.length
+            ? Math.round(sc.reduce((a, b) => a + b.percent, 0) / sc.length)
+            : "—";
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td class="p-2"><a class="text-blue-600 hover:underline" href="#subject/${
+            s.program_id
+          }/${s.year}/${sub.id}">${sub.name}</a></td><td class="p-2">${
+            avg !== "—" ? avg + "%" : "—"
+          }</td>`;
+          tbody.appendChild(tr);
+        });
+        const backLink = document.getElementById("backToClassLink");
+        backLink.href = `#class/${s.program_id}/${s.year}`;
+      }
+
+      // hash routing
+      function handleHash(e) {
+        console.log("hash changed");
+        console.log("old:", e.oldURL);
+        console.log("new:", e.newURL);
+
+        const hash = location.hash.slice(1);
+        console.log("hash", hash);
+        const h = location.hash.replace(/^#/, "");
+        if (!h || h === "dashboard") {
+          showView("dashboard");
+          return;
+        }
+        if (h === "students") {
+          showView("students");
+          return;
+        }
+
+        console.log("arush hash", h);
+        if (h.startsWith("program/")) {
+          const parts = h.split("/");
+          const prog = parseInt(parts[1]);
+          const yr = parseInt(parts[2]);
+          showView("program");
+          renderClass(prog, yr);
+          return;
+        }
+        if (h.startsWith("subject/")) {
+          showView("subject");
+          const container = document.getElementById("components-container");
+          const parts = h.split("/");
+
+          const pck = parts[1]; // program_course_key
+          console.log("arush pck", pck);
+          const pgmid = pck.substring(0, 7);
+          console.log("arush pgmid", pgmid);
+          const yr = parts[2];
+          const subject = parts[3];
+          const startdate = parts[4];
+          const enddate = parts[5];
+          Academic.subject = subject;
+          window.academic.selected_pgmid = pgmid;
+          console.log("Arush subject", yr, subject);
+
+          let programId = Academic.selected_pgmid || "";
+          const apiUrl = `/academic/api/components/?subject=${subject}&program_id=${
+            Academic.selected_pgmid || ""
+          }`;
+          container.dataset.apiUrl = apiUrl;
+          container.dataset.pck = pck;
+          container.dataset.yr = yr;
+          container.dataset.subject = subject;
+          container.dataset.startdate = startdate;
+          container.dataset.enddate = enddate;
+          container.dataset.pgmid = pgmid;
+          
+          
+          if (window.loadComponents) window.loadComponents();
+          renderSubject(pgmid, yr, subject);
+          return;
+        }
+
+        if (h.startsWith("student/")) {
+          const parts = h.split("/");
+          const id = parseInt(parts[1]);
+          showView("student");
+          renderStudent(id);
+          return;
+        }
+        // fallback
+        showView("dashboard");
+      }
+
+      // events and pagination handlers
+      window.addEventListener("hashchange", handleHash);
+      document
+        .getElementById("backToStudentsBtn")
+        .addEventListener("click", () => {
+          location.hash = "#students";
+        });
+      document
+        .getElementById("backToClassFromSubject")
+        .addEventListener("click", () => {
+          location.hash = "#students";
+        });
+      document
+        .getElementById("programList")
+        .addEventListener("change", (e) =>
+          populateSubjectFilterForProgram(parseInt(e.target.value) || null)
+        );
+      document
+        .getElementById("applyFilters")
+        .addEventListener("click", () => applyFiltersAndRender());
+      document.getElementById("pageSize").addEventListener("change", () => {
+        pageSize = parseInt(document.getElementById("pageSize").value);
+        currentPage = 1;
+        renderPage();
+      });
+      document.getElementById("prevPage").addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPage();
+        }
+      });
+      document.getElementById("nextPage").addEventListener("click", () => {
+        const total = filteredList.length;
+        if (currentPage * pageSize < total) {
+          currentPage++;
+          renderPage();
+        }
+      });
+      
+      // Sample data
+      // initial setup
+      getsessions();
+      getprograms();
+      //console.log(sessions);
+      //defaultSession = sessions.length ? sessions[sessions.length-1] : null;
+      //populateFilters();
+
+      // auto-apply defaults so user sees filtered list without loading everything
+      //applyFiltersAndRender();
+
+      // initial route
+      if (!location.hash) location.hash = "#dashboard";
+      else handleHash();
+    </script>
+  </body>
+</html>
