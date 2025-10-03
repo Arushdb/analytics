@@ -19,6 +19,20 @@
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
           Roboto, "Helvetica Neue", Arial;
       }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
     </style>
   </head>
   <body class="bg-gray-100 min-h-screen flex">
@@ -51,6 +65,19 @@
 
       <!-- Views container -->
       <div id="views">
+        <div
+          id="loader"
+          class="fixed inset-0 bg-black bg-opacity-20 hidden z-50"
+        >
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div
+              class="spinner"
+              role="status"
+              aria-live="polite"
+              aria-label="Loading"
+            ></div>
+          </div>
+        </div>
         <!-- Dashboard -->
         <section id="view-dashboard">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -88,6 +115,20 @@
               />
               <input type="hidden" id="programId" name="program_id" />
               <datalist id="programList"></datalist>
+              <input
+                id="rollnoFilter"
+                type="text"
+                class="border rounded px-2 py-1 text-sm"
+                placeholder="Enter Roll Number"
+                style="min-width: 140px; max-width: 260px"
+              />
+              <input
+                id="branchFilter"
+                type="text"
+                class="border rounded px-2 py-1 text-sm"
+                placeholder="Enter Branch"
+                style="min-width: 140px; max-width: 260px"
+              />
               <input
                 id="subjectFilter"
                 type="text"
@@ -217,52 +258,48 @@
           <div class="mb-4 flex items-center justify-between">
             <div>
               <h2 id="subjectLabel" class="text-xl font-semibold">
-                Subject — —
+                Subject Academic.subject — —
               </h2>
-              <p id="subjectMeta" class="text-sm text-gray-600">
+              <p id="subjectMeta" class="text-lg text-blue-600">
                 Class • Program
               </p>
             </div>
             <div>
               <button
-                id="backToClassFromSubject"
+                id="backTostudentsFronSubject"
                 class="text-sm text-blue-600 hover:underline"
               >
-                Back to Class
+                Back to Students
               </button>
             </div>
           </div>
           <!-- Include the partial and pass parameters -->
-      {% include "academic/components.html" with section_title="Student Evaluation"  %}
-
-          
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white p-4 rounded shadow">
-              Avg %: <strong id="subAvg">—</strong>
-            </div>
-            <div class="bg-white p-4 rounded shadow">
-              Median %: <strong id="subMedian">—</strong>
-            </div>
-            <div class="bg-white p-4 rounded shadow">
-              Tests Count: <strong id="subTests">—</strong>
-            </div>
-          </div>
-
-          <div class="bg-white p-4 rounded shadow mb-4">
-            <h3 class="font-medium mb-2">Students marks in this subject</h3>
-            <table class="min-w-full">
-              <thead>
-                <tr>
-                  <th class="p-2 text-left">Roll</th>
-                  <th class="p-2 text-left">Name</th>
-                  <th class="p-2 text-left">Avg %</th>
-                </tr>
-              </thead>
-              <tbody id="subjectStudentsBody"></tbody>
-            </table>
-          </div>
+          {% include "academic/components.html" with section_title="Student Evaluation" %}
         </section>
+        <section id="view-rollno" class="hidden">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <h2 id="rollnoLabel" class="text-xl font-semibold">
+                Roll no:  — —
+              </h2>
+              <p id="rollnoMeta" class="text-lg text-blue-600">
+                Class • Program
+              </p>
+            </div>
+            <div>
+              <button
+                id="backTostudentsFromRollno"
+                class="text-sm text-blue-600 hover:underline"
+              >
+                Back to Students
+              </button>
+            </div>
+          </div>
+          <!-- Include the partial and pass parameters -->
+          {% include "academic/student_performance.html" with section_title="Roll Number Evaluation" %}
+          
+        </section>
+
 
         <!-- Student Detail -->
         <section id="view-student" class="hidden">
@@ -312,7 +349,7 @@
       // create one global namespace (recommended)
       window.academic = window.academic || {};
       const Academic = window.academic;
-      
+
       Academic.selected_pgmid = null;
       Academic.selected_pgm = null;
       Academic.selected_year = null;
@@ -371,12 +408,7 @@
 
       function getprograms() {
         const datalist = document.getElementById("programList");
-        //const opt = document.createElement('option');
-        //opt.value="All";
-        //opt.textContent = "All Programs";
-        // programSelect.appendChild(opt);
-        // AJAX call to h courses for the selected program and year
-
+        
         fetch(`api/student/get-programs/`)
           .then((response) => response.json())
           .then((data) => {
@@ -396,12 +428,7 @@
             const pgmid = document.getElementById("programId");
             pgminput.addEventListener("change", onProgramChange);
 
-            //pgminput.addEventListener("change", function() {
-            // const selected = [...datalist.options].find(opt => opt.value === pgminput.value);
-            // pgmid.value = selected ? selected.dataset.id : "";
-            // console.log("arush,selected program",pgmid.value); // save ID or clear
-            // });
-            //courseContainer.style.display = 'block';
+        
           })
           .catch((error) => console.error("Error:", error));
       }
@@ -409,192 +436,46 @@
         const params = new URLSearchParams();
         id = Academic.selected_pgmid;
         year = Academic.selected_year;
+        let rollnoSelect = document.getElementById("rollnoFilter");
+        let branchSelect = document.getElementById("branchFilter");
         let subjectSelect = document.getElementById("subjectFilter");
 
+        let rollno = rollnoSelect.value.trim();
+        let branch= branchSelect.value.trim();
         let subject = subjectSelect.value.trim();
+        rollno = rollno ? rollno : "";
+        branch = branch ? branch : "";
         subject = subject ? subject : "";
         if (id) params.set("program_id", id);
         if (year) params.set("year", year);
+        params.set("rollno", rollno);
+        params.set("branch", branch);
         params.set("subject", subject);
-        params.set("limit", "50");
+        params.set("limit", "100");
         params.set("offset", "0");
         const url = `/academic/login/api/student/get-students/?${params.toString()}`;
-
+        const loader = document.getElementById("loader");
+        loader.style.display = "block"; // show spinner
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (data.students) {
+
           console.log(data);
         }
+        loader.style.display = "none"; // hide spinner
+         const total = data.students.length;
+         document.getElementById("totalCount").textContent = total;
 
-        const table = document.getElementById("studentsTableBody");
-
-        if (table) {
-          const tbody = table;
-          tbody.innerHTML = "";
-
-          data.students.forEach((s) => {
-            const tr = document.createElement("tr");
-            // adjust columns to match your student object
-            tr.innerHTML = `
-            <td>${s.roll_number ?? ""}</td>
-            <td>${s.student_first_name ?? ""}</td>
-            <td>${Academic.selected_pgm ?? ""}</td>
-            <td>${s.semester_code ?? ""}</td>
-            <td>${s.branch_id ?? ""}</td>
-            <td>${s.specialization_id ?? ""}</td>
-            <td><a href="#subject/${s.program_course_key}/${
-              Academic.selected_year
-            }/${s.course_code}/${s.startdate}/${s.enddate}           " 
-              class="text-blue-600 hover:underline">${
-                s.course_code ?? ""
-              }</a></td>
-            <td>${Academic.selected_year ?? ""}</td>
-                         
-                `;
-            tbody.appendChild(tr);
-          });
-        }
+          filteredList = data.students;
+          currentPage = 1;
+          pageSize = parseInt(document.getElementById("pageSize").value);
+          renderPage();
+         return data.students;
       }
 
       // Demo data: students (this list can be small; real app will query server with filters)
-      const demoStudents = [
-        {
-          id: 1,
-          roll: "2022001",
-          name: "Amit Sharma",
-          program: "BSc CS",
-          program_id: 10,
-          year: 2022,
-        },
-        {
-          id: 2,
-          roll: "2022002",
-          name: "Bhavana K",
-          program: "BSc CS",
-          program_id: 10,
-          year: 2022,
-        },
-        {
-          id: 3,
-          roll: "2022003",
-          name: "Chetan L",
-          program: "BSc CS",
-          program_id: 10,
-          year: 2022,
-        },
-        {
-          id: 4,
-          roll: "2022004",
-          name: "Deepa R",
-          program: "BSc CS",
-          program_id: 10,
-          year: 2022,
-        },
-        {
-          id: 5,
-          roll: "2022005",
-          name: "Esha S",
-          program: "BSc CS",
-          program_id: 10,
-          year: 2022,
-        },
-        {
-          id: 6,
-          roll: "2023001",
-          name: "Chirag P",
-          program: "BSc IT",
-          program_id: 11,
-          year: 2023,
-        },
-        {
-          id: 7,
-          roll: "2023002",
-          name: "Divya M",
-          program: "BSc IT",
-          program_id: 11,
-          year: 2023,
-        },
-        {
-          id: 8,
-          roll: "2023003",
-          name: "Evan T",
-          program: "BSc IT",
-          program_id: 11,
-          year: 2023,
-        },
-        {
-          id: 9,
-          roll: "2023004",
-          name: "Farah Z",
-          program: "BSc IT",
-          program_id: 11,
-          year: 2023,
-        },
-        {
-          id: 10,
-          roll: "2023005",
-          name: "Gopal R",
-          program: "BSc IT",
-          program_id: 11,
-          year: 2023,
-        },
-        // add more if you want to test pagination
-      ];
-
-      // Demo programs list
-      const demoPrograms = [
-        { id: 10, name: "BSc CS" },
-        { id: 11, name: "BSc IT" },
-      ];
-
-      // Demo subjects by program
-      const demoSubjects = {
-        10: [
-          // program_id 10 (BSc CS)
-          { id: 101, name: "Mathematics" },
-          { id: 102, name: "Data Structures" },
-          { id: 103, name: "Database Systems" },
-        ],
-        11: [
-          // program_id 11 (BSc IT)
-          { id: 201, name: "Mathematics" },
-          { id: 202, name: "Networking" },
-          { id: 203, name: "Web Development" },
-        ],
-      };
-
-      // Demo scores: each entry = {student_id, subject_id, marks_percent}
-      const demoScores = [
-        // for program 10 students
-        { student_id: 1, subject_id: 101, percent: 78 },
-        { student_id: 1, subject_id: 102, percent: 82 },
-        { student_id: 1, subject_id: 103, percent: 69 },
-        { student_id: 2, subject_id: 101, percent: 74 },
-        { student_id: 2, subject_id: 102, percent: 65 },
-        { student_id: 2, subject_id: 103, percent: 71 },
-        { student_id: 3, subject_id: 101, percent: 81 },
-        { student_id: 4, subject_id: 102, percent: 59 },
-        { student_id: 5, subject_id: 103, percent: 88 },
-
-        // program 11 students
-        { student_id: 6, subject_id: 201, percent: 85 },
-        { student_id: 6, subject_id: 202, percent: 79 },
-        { student_id: 6, subject_id: 203, percent: 88 },
-        { student_id: 7, subject_id: 201, percent: 68 },
-        { student_id: 7, subject_id: 202, percent: 72 },
-        { student_id: 8, subject_id: 203, percent: 70 },
-        { student_id: 9, subject_id: 201, percent: 73 },
-        { student_id: 10, subject_id: 202, percent: 66 },
-      ];
-
-      // derive sessions (years) available and default to latest
-      //const sessions = Array.from(new Set(demoStudents.map(s=>s.year))).sort();
-      //const sessions =  getsessions();
-      //console.log(sessions);
-      //const defaultSession = sessions.length ? sessions[sessions.length-1] : null;
-      const defaultProgram = demoPrograms.length ? demoPrograms[0].id : null;
-
+      
       // pagination state
       let currentPage = 1;
       let pageSize = 10;
@@ -605,6 +486,7 @@
         students: document.getElementById("view-students"),
         program: document.getElementById("view-program"),
         subject: document.getElementById("view-subject"),
+        rollno: document.getElementById("view-rollno"),
         student: document.getElementById("view-student"),
       };
 
@@ -618,69 +500,28 @@
           name.charAt(0).toUpperCase() + name.slice(1);
       }
 
-      // populate filter selects
-      function populateFilters() {
-        //populateSubjectFilterForProgram(defaultProgram);
-      }
-
-      function populateSubjectFilterForProgram(progId) {
-        const subjectSelect = document.getElementById("subjectFilter");
-        subjectSelect.innerHTML = "";
-        // allow multiple selection; add placeholder option when none selected
-        const placeholder = document.createElement("option");
-        placeholder.value = "";
-        placeholder.textContent = "All Subjects";
-        subjectSelect.appendChild(placeholder);
-        if (!progId) return;
-        const subs = demoSubjects[progId] || [];
-        subs.forEach((s) => {
-          const opt = document.createElement("option");
-          opt.value = s.id;
-          opt.textContent = s.name;
-          subjectSelect.appendChild(opt);
-        });
-      }
-
-      // apply filters -> compute filteredList and show first page
+            // apply filters -> compute filteredList and show first page
       function applyFiltersAndRender() {
-        getstudents();
+       
+
         const session = document.getElementById("sessionSelect").value || null;
         const program = document.getElementById("programInput").value || null;
         const subjectSelect = document.getElementById("subjectFilter");
-        // gather selected subject ids (skip empty placeholder)
-        // const subjectIds = Array.from(subjectSelect.selectedOptions)
-        //  .map((o) => o.value)
-        //  .filter((v) => v !== "")
-        //  .map((v) => parseInt(v));
-
-        // filter list
-        // let list = demoStudents.slice();
-        //if (session) list = list.filter((s) => s.year == parseInt(session));
-        //if (program)
-        //  list = list.filter((s) => s.program_id == parseInt(program));
-        //if (subjectIds.length) {
-        // const studentIdsWithSubjects = new Set(
-        //   demoScores
-        //     .filter((ds) => subjectIds.includes(ds.subject_id))
-        //    .map((ds) => ds.student_id)
-        //);
-        //  list = list.filter((s) => studentIdsWithSubjects.has(s.id));
-        // }
-
-        //filteredList = list;
-        //currentPage = 1;
-        // pageSize = parseInt(document.getElementById("pageSize").value);
-        // renderPage();
+        if (!Academic.selected_pgmid  || session==="All Sessions") {
+          alert("Please select a valid program or session from the list.");
+          return;
+        }
+        getstudents();
+       
       }
 
       function renderPage() {
         const tbody = document.getElementById("studentsTableBody");
-        tbody.innerHTML = "";
         const total = filteredList.length;
-        document.getElementById("totalCount").textContent = total;
+
         if (total === 0) {
           tbody.innerHTML =
-            '<tr><td class="p-4" colspan="4" style="color:#6b7280">No students match the selected filters.</td></tr>';
+            '<tr><td class="p-4" colspan="4" style="color:blue">No students match the selected filters.</td></tr>';
           document.getElementById("showingRange").textContent = "0-0";
           document.getElementById("currentPage").textContent = "1";
           return;
@@ -688,16 +529,36 @@
         const start = (currentPage - 1) * pageSize;
         const end = Math.min(start + pageSize, total);
         const pageItems = filteredList.slice(start, end);
-        pageItems.forEach((s) => {
+        console.log("rendering page Arush", currentPage, pageItems,start,end);
+        const tr = document.createElement("tr");
+         tbody.innerHTML = "";
+         count=0;
+         pageItems.forEach((s) => {
+         console.log(count++,"arush",s);
           const tr = document.createElement("tr");
-          tr.innerHTML = `
-          <td class="p-3 text-sm"><a href="#student/${s.id}" class="text-blue-600 hover:underline">${s.roll}</a></td>
-          <td class="p-3 text-sm">${s.name}</td>
-          <td class="p-3 text-sm"><a href="#class/${s.program_id}/${s.year}" class="text-blue-600 hover:underline">${s.program}</a></td>
-          <td class="p-3 text-sm">${s.year}</td>
-        `;
+         tr.innerHTML = `
+            <td><a href="#rollno/${s.roll_number}/${Academic.selected_pgmid}"
+               class="text-blue-600 hover:underline" >${s.roll_number} </a></td>
+            <td>${s.student_first_name ?? ""}</td>
+            <td>${Academic.selected_pgm ?? ""}</td>
+            <td>${s.semester_code ?? ""}</td>
+            <td>${s.branch_id ?? ""}</td>
+            <td>${s.specialization_id ?? ""}</td>
+            <td><a href="#subject/${s.program_course_key}/${
+              Academic.selected_year
+            }/${s.course_code}/${s.startdate}/${s.enddate}           "
+              class="text-blue-600 hover:underline">${
+                s.course_code ?? ""
+              }</a></td>
+            <td>${Academic.selected_year ?? ""}</td>
+
+                `;
           tbody.appendChild(tr);
         });
+
+
+
+
         document.getElementById("showingRange").textContent = `${
           start + 1
         }-${end}`;
@@ -710,9 +571,7 @@
 
       // class, subject, student render functions (unchanged from before)
       function renderClass(programId, year) {
-        const students = demoStudents.filter(
-          (s) => s.program_id == programId && s.year == year
-        );
+        
         document.getElementById("classLabel").textContent = `Class: ${
           students.length ? students[0].program : "Unknown"
         } — ${year}`;
@@ -720,20 +579,7 @@
           "classMeta"
         ).textContent = `Program ID ${programId}`;
         document.getElementById("clsCount").textContent = students.length;
-        const scores = demoScores.filter((ds) =>
-          students.some((st) => st.id === ds.student_id)
-        );
-        const avg = scores.length
-          ? Math.round(
-              scores.reduce((s, v) => s + v.percent, 0) / scores.length
-            )
-          : "—";
-        const passpct = scores.length
-          ? Math.round(
-              (scores.filter((x) => x.percent >= 40).length / scores.length) *
-                100
-            )
-          : "—";
+        
         document.getElementById("clsAvg").textContent =
           avg !== "—" ? avg + "%" : "—";
         document.getElementById("clsPass").textContent =
@@ -742,30 +588,7 @@
         const subs = demoSubjects[programId] || [];
         const subContainer = document.getElementById("classSubjects");
         subContainer.innerHTML = "";
-        subs.forEach((sub) => {
-          const subScores = demoScores.filter(
-            (ds) =>
-              ds.subject_id === sub.id &&
-              students.some((st) => st.id === ds.student_id)
-          );
-          const subAvg = subScores.length
-            ? Math.round(
-                subScores.reduce((s, v) => s + v.percent, 0) / subScores.length
-              )
-            : "—";
-          const a = document.createElement("div");
-          a.className = "p-2 border rounded flex items-center justify-between";
-          a.innerHTML = `<div><strong>${
-            sub.name
-          }</strong><div class="text-xs text-gray-600">Avg: ${
-            subAvg !== "—" ? subAvg + "%" : "—"
-          }</div></div>
-                       <div><a class="text-blue-600 hover:underline" href="#subject/${programId}/${year}/${
-            sub.id
-          }">Open</a></div>`;
-          subContainer.appendChild(a);
-        });
-
+        
         const tbody = document.getElementById("classStudentsBody");
         tbody.innerHTML = "";
         students.forEach((s) => {
@@ -776,75 +599,26 @@
       }
 
       function renderSubject(programId, year, subjectId) {
-        const subs = demoSubjects[programId] || [];
-        const subject = subs.find((x) => x.id === subjectId);
-        const students = demoStudents.filter(
-          (s) => s.program_id == programId && s.year == year
-        );
+        
         document.getElementById("subjectLabel").textContent = `${
-          subject ? subject.name : "Subject"
+          Academic.subject  ? Academic.subject : "Subject"
         } — ${year}`;
         document.getElementById(
           "subjectMeta"
-        ).textContent = `${students.length} students • Program ${programId}`;
-        const subScores = demoScores.filter(
-          (ds) =>
-            ds.subject_id === subjectId &&
-            students.some((st) => st.id === ds.student_id)
-        );
-        const avg = subScores.length
-          ? Math.round(
-              subScores.reduce((s, v) => s + v.percent, 0) / subScores.length
-            )
-          : "—";
-        const sorted = subScores.map((s) => s.percent).sort((a, b) => a - b);
-        const median = sorted.length
-          ? sorted[Math.floor(sorted.length / 2)]
-          : "—";
-        document.getElementById("subAvg").textContent =
-          avg !== "—" ? avg + "%" : "—";
-        document.getElementById("subMedian").textContent =
-          median !== "—" ? median + "%" : "—";
-        document.getElementById("subTests").textContent = subScores.length
-          ? new Set(subScores.map((s) => s.subject_id)).size
-          : 1;
-
-        const tbody = document.getElementById("subjectStudentsBody");
-        tbody.innerHTML = "";
-        students.forEach((st) => {
-          const stScores = demoScores.filter(
-            (ds) => ds.student_id === st.id && ds.subject_id === subjectId
-          );
-          const stAvg = stScores.length
-            ? Math.round(
-                stScores.reduce((s, v) => s + v.percent, 0) / stScores.length
-              )
-            : "—";
-          const tr = document.createElement("tr");
-          tr.innerHTML = `<td class="p-2"><a href="#student/${
-            st.id
-          }" class="text-blue-600 hover:underline">${
-            st.roll
-          }</a></td><td class="p-2">${st.name}</td><td class="p-2">${
-            stAvg !== "—" ? stAvg + "%" : "—"
-          }</td>`;
-          tbody.appendChild(tr);
-        });
+        ).textContent = `Program ${Academic.selected_pgm}`;
+        
+        
+       
+        
       }
 
       function renderStudent(id) {
-        const s = demoStudents.find((x) => x.id == id);
-        if (!s) return;
+       
         document.getElementById("stuName").textContent = `${s.name}`;
         document.getElementById(
           "stuMeta"
         ).textContent = `${s.roll} • ${s.program} — ${s.year}`;
-        const sScoresAll = demoScores.filter((ds) => ds.student_id === s.id);
-        const overall = sScoresAll.length
-          ? Math.round(
-              sScoresAll.reduce((a, b) => a + b.percent, 0) / sScoresAll.length
-            )
-          : "—";
+        
         document.getElementById("stuPct").textContent =
           overall !== "—" ? overall + "%" : "—";
         document.getElementById("stuAtt").textContent =
@@ -852,30 +626,24 @@
         const subs = demoSubjects[s.program_id] || [];
         const tbody = document.getElementById("studentSubjectsBody");
         tbody.innerHTML = "";
-        subs.forEach((sub) => {
-          const sc = demoScores.filter(
-            (ds) => ds.student_id === s.id && ds.subject_id === sub.id
-          );
-          const avg = sc.length
-            ? Math.round(sc.reduce((a, b) => a + b.percent, 0) / sc.length)
-            : "—";
-          const tr = document.createElement("tr");
-          tr.innerHTML = `<td class="p-2"><a class="text-blue-600 hover:underline" href="#subject/${
-            s.program_id
-          }/${s.year}/${sub.id}">${sub.name}</a></td><td class="p-2">${
-            avg !== "—" ? avg + "%" : "—"
-          }</td>`;
-          tbody.appendChild(tr);
-        });
+        
+        
         const backLink = document.getElementById("backToClassLink");
         backLink.href = `#class/${s.program_id}/${s.year}`;
       }
-
+    function destroyHistogram() {
+      const histDiv = document.getElementById("histogramContainer");
+      if (histDiv) {
+        histDiv.innerHTML = ""; // remove chart + table
+      }
+    }
       // hash routing
       function handleHash(e) {
         console.log("hash changed");
         console.log("old:", e.oldURL);
         console.log("new:", e.newURL);
+         if (window.currentChart) window.currentChart.destroy();
+         destroyHistogram();
 
         const hash = location.hash.slice(1);
         console.log("hash", hash);
@@ -885,6 +653,7 @@
           return;
         }
         if (h === "students") {
+         
           showView("students");
           return;
         }
@@ -926,10 +695,33 @@
           container.dataset.startdate = startdate;
           container.dataset.enddate = enddate;
           container.dataset.pgmid = pgmid;
-          
-          
+
+
           if (window.loadComponents) window.loadComponents();
           renderSubject(pgmid, yr, subject);
+          return; 
+        }
+        if (h.startsWith("rollno/")) {
+          showView("rollno");
+          const container1 = document.getElementById("rollno_chart_Container");
+          console.log("container1",container1);
+          const parts = h.split("/");
+
+          const rollno = parts[1]; // program_course_key
+          
+          const pgmid = parts[2];
+          
+          
+          
+          window.academic.selected_pgmid = pgmid;
+        
+
+          let programId = Academic.selected_pgmid || "";
+          
+                   
+          container1.dataset.rollno = rollno;
+          container1.dataset.pgmid = pgmid;
+          
           return;
         }
 
@@ -947,20 +739,21 @@
       // events and pagination handlers
       window.addEventListener("hashchange", handleHash);
       document
-        .getElementById("backToStudentsBtn")
+        .getElementById("backTostudentsFromRollno")
         .addEventListener("click", () => {
           location.hash = "#students";
         });
       document
-        .getElementById("backToClassFromSubject")
+        .getElementById("backTostudentsFronSubject")
         .addEventListener("click", () => {
+           
           location.hash = "#students";
         });
-      document
+      {% comment %} document
         .getElementById("programList")
         .addEventListener("change", (e) =>
           populateSubjectFilterForProgram(parseInt(e.target.value) || null)
-        );
+        ); {% endcomment %}
       document
         .getElementById("applyFilters")
         .addEventListener("click", () => applyFiltersAndRender());
@@ -982,19 +775,11 @@
           renderPage();
         }
       });
+
       
-      // Sample data
-      // initial setup
       getsessions();
       getprograms();
-      //console.log(sessions);
-      //defaultSession = sessions.length ? sessions[sessions.length-1] : null;
-      //populateFilters();
-
-      // auto-apply defaults so user sees filtered list without loading everything
-      //applyFiltersAndRender();
-
-      // initial route
+       // initial view     
       if (!location.hash) location.hash = "#dashboard";
       else handleHash();
     </script>

@@ -8,7 +8,7 @@
 
     <!-- Container where checkboxes will be injected -->
   <div id="components-container" class="flex flex-row flex-wrap gap-4" data-api-url="{{ api_url }}">Loading...</div>
-
+  <div id="histogramContainer" class="mt-4"></div>
     <button  class ="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"  type="submit">Submit</button>
   </form>
 
@@ -22,15 +22,17 @@
               >
                 <option value="avg">Average Marks(bar)</option>
                 <option value="grades">Grade Distribution(pie)</option>
-                <option value="pie">Pie Chart Grade Distribution</option>
+                <option value="comp_marks">Component Marks(line)</option>
+                <option value="analyze_marks">Anaylyze Marks(Histogram)</option>
               </select>
               <div
                 id="componentPerformanceChartContainer"
                 class="chart-container"
               >
+
                 <div class="bg-white rounded-lg border border-gray-200 p-6">
                   <h3 class="text-lg font-semibold mb-4">
-                    Component Performance (Bar)
+                    Component Performance 
                   </h3>
                   <canvas id="componentPerformanceChart"></canvas>
                 </div>
@@ -130,8 +132,13 @@
         type="pie";
       else if(optionselected==="avg")
         type="bar";
-      else
+      else if(optionselected==="comp_marks")
         type="line";
+      else if(optionselected==="analyze_marks")
+        type="hist";
+        
+      else
+        type="bar";  
       getcomponentdata({ components:checked, charttype: type || 'bar',markstype:optionselected });
       document.getElementById('result').textContent = 'Selected: ' + (checked.join(', ') || 'None');
     });
@@ -153,12 +160,13 @@
           .getElementById("componentPerformanceChart")
           .getContext("2d");
         // Destroy previous chart if needed
+         console.log("ctx chart",ctx);
         if (window.currentChart) window.currentChart.destroy();
         // Example data
 
         if(markstype==="grades")
         {
-          console.log("Data for grades chart",data);
+          console.log("Data for grades chart 1111",data);
           const gradesdata = {
           labels: data.map(d => d.internal_grade), // e.g., ["A", "B", "C"]
           datasets: [{ label: "Count", data:data.map(d => d.count)  }],
@@ -183,11 +191,86 @@
         });
           return;
         }
+        if(markstype==="comp_marks"){
+          const labels = [];
+           for (const row of data.components_marks) {
+          if (!labels.includes(row.rollnumber)) labels.push(row.rollnumber);
+          }
+          const byEval = {};
+          for (const row of data.components_marks) {
+          const evalName = row.name; // e.g., "Quiz-1", "Midterm"
+          if (!byEval[evalName]) byEval[evalName] = {};
+          byEval[evalName][row.rollnumber] = Number(row.marks);
+          
+          }
+
+          // Simple distinct color generator
+        const colorFor = (i) => {
+          const hue = (i * 47) % 360;         // spread hues
+          const solid = `hsl(${hue} 70% 45%)`;
+          const fill  = `hsl(${hue} 70% 45% / 0.2)`;
+          return { solid, fill };
+        };
+
+        const evalNames = Object.keys(byEval);
+
+        const datasets = evalNames.map((name, i) => {
+    const { solid, fill } = colorFor(i);
+    return {
+      label: name,
+      data: labels.map(r => byEval[name][r] ?? null), // align to roll numbers
+      borderColor: solid,
+      backgroundColor: fill,
+      borderWidth: 2,
+      pointRadius: 3,
+      tension: 0.25,
+      fill: false,
+      spanGaps: true,
+    };
+  });
+
+      const compmarksdata = { labels, datasets };
+      console.log("Data for component marks chart",compmarksdata);
+
+         
+          // Render line chart
+  window.currentChart = new Chart(ctx, {
+    type: "line",
+    data: compmarksdata,
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "top" },
+        title: { display: true, text: "Marks by Evaluation (per Roll Number)" },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y ?? "—"}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: "Roll Number" },
+          ticks: { autoSkip: true, maxRotation: 0 }
+        },
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: "Marks" },
+          // suggestedMax: 100, // <- uncomment if your max marks are 100
+        }
+      }
+    }
+  });
+
+
+          return;
+        } 
         
         
       }
 
- async function getcomponentdata({ components, charttype ,markstype } = {}) {
+ async function getcomponentdata123({ components, charttype ,markstype } = {}) {
         const params = new URLSearchParams();
         const container = document.getElementById('components-container');
         const subject = container.dataset.subject;
@@ -213,17 +296,32 @@
           url = `/academic/api/components_avg_marks?${params.toString()}`;
         if  (markstype==="grades") 
           url = `/academic/api/get_grades?${params.toString()}`;
-
-        const res = await fetch(url);
+        if  (markstype==="comp_marks") 
+          url = `/academic/api/get_components_marks?${params.toString()}`;
+        if  (markstype==="analyze_marks") 
+        url = `/academic/api/marks_analysis?${params.toString()}`;  
+        
+        
+          const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+
+         // Toggle chart canvas vs histogram image
+  if (markstype === "analyze_marks") {
+    renderHistogram(data);
+  } else {
+    // show canvas container, hide histogram
+    document.getElementById("componentPerformanceChartContainer").style.display = "";
+    document.getElementById("histogramContainer").style.display = "none";
+    renderChart(charttype, markstype, data);
+  }
        
-          renderChart(charttype,markstype, data);
+          
         
 
         const table = document.getElementById("studentsTableBody");
 
-        if (table) {
+        if (table && data.avg_marks) {
           const tbody = table;
           tbody.innerHTML = "";
 
@@ -238,7 +336,106 @@
           });
         }
       }
+    
+      async function getcomponentdata({ components, charttype ,markstype } = {}) {
+  const params = new URLSearchParams();
+  const container = document.getElementById('components-container');
+  const subject = container.dataset.subject;
+  const pck = container.dataset.pck;
+  const year = container.dataset.yr;
+  const startdate = container.dataset.startdate;
+  const enddate = container.dataset.enddate;
+  const ev_comps = components;
 
+  if (pck) params.set("pck", pck);
+  if (year) params.set("year", year);
+  if (subject) params.set("subject", subject);
+  if (ev_comps) params.set("components", ev_comps);
+  if (startdate) params.set("startdate", startdate);
+  if (enddate) params.set("enddate", enddate);
+
+  let url = "";
+  if (markstype === "avg") url = `/academic/api/components_avg_marks?${params.toString()}`;
+  if (markstype === "grades") url = `/academic/api/get_grades?${params.toString()}`;
+  if (markstype === "comp_marks") url = `/academic/api/get_components_marks?${params.toString()}`;
+  if (markstype === "analyze_marks") url = `/academic/api/marks_analysis?${params.toString()}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+
+  // Toggle chart canvas vs histogram image
+  if (markstype === "analyze_marks") {
+    renderHistogram(data);
+  } else {
+    // show canvas container, hide histogram
+    document.getElementById("componentPerformanceChartContainer").style.display = "";
+    document.getElementById("histogramContainer").style.display = "none";
+    renderChart(charttype, markstype, data);
+  }
+
+  // ... (keep your table update code as-is)
+}
+
+function renderHistogram(data) {
+  const imgSrc = `data:image/png;base64,${data.histogram}`;
+  const histDiv = document.getElementById("histogramContainer");
+  console.log("Rendering histogram with data:", data.summary);
+  histDiv.innerHTML = `
+    <div class="bg-white rounded-lg border border-gray-200 p-6">
+      <h3 class="text-lg font-semibold mb-4">Marks Distribution (Histogram)</h3>
+      <img src="${imgSrc}" alt="Marks Histogram" class="max-w-full h-auto" />
+      <div class="mt-3 text-sm text-gray-700">
+       <div class="bg-white p-4 rounded shadow mb-4">
+            <h3 class="font-medium mb-2">Student Summary</h3>
+            <table class="min-w-full">
+              <thead>
+                <tr>
+                  <th class="p-2 text-left">Class Test</th>
+                  <th class="p-2 text-left">Total Students</th>
+                  <th class="p-2 text-left">Max</th>
+                  <th class="p-2 text-left">Min</th>
+                  <th class="p-2 text-left">Mean</th>
+                  <th class="p-2 text-left">Median</th>
+                  <th class="p-2 text-left">Std Deviation</th>
+                  <th class="p-2 text-left">IQR</th>
+                  <th class="p-2 text-left">Skewness</th>
+                  <th class="p-2 text-left">Kurtosis</th>
+                </tr>
+              </thead>
+              <tbody id="summaryBody"></tbody>
+            </table>
+          </div> 
+       
+      </div>
+    </div>
+  `;
+summarytable=  document.getElementById("summaryBody")
+
+summarytable.innerHTML = "";
+Object.keys(data.summary).forEach(ct => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td class="p-2">${ct}</td>
+    <td class="p-2">${data.summary[ct].Count}</td>
+    <td class="p-2">${data.summary[ct].Max}</td>
+    <td class="p-2">${data.summary[ct].Min}</td>
+    <td class="p-2">${data.summary[ct].Mean}</td>
+    <td class="p-2">${data.summary[ct].Median}</td>
+    <td class="p-2">${data.summary[ct].Std_Dev.toFixed(2)}</td>
+    <td class="p-2">${data.summary[ct].IQR.toFixed(2)}</td>
+    <td class="p-2">${data.summary[ct].Skewness.toFixed(2)}</td>
+    <td class="p-2">${data.summary[ct].Kurtosis.toFixed(2)}</td>
+  `;
+  summarytable.appendChild(tr);
+  
+});
+
+  // hide the Chart.js canvas container when showing histogram
+  document.getElementById("componentPerformanceChartContainer").style.display = "none";
+  histDiv.style.display = "";
+}
+ 
       //renderChart("bar");
   </script>
 </body>
