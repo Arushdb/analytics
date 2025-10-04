@@ -1,12 +1,6 @@
   <h2>{{ section_title }}</h2>
   <form id="student-form">
-   
-
- 
-  <div id="rollno_chart_Container" class="mt-4" data-api-url="{{ api_url }}"></div>
-    <button  class ="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"  type="submit">Submit</button>
-  </form>
-
+    
   <div class="grid md:grid-cols-2 gaclass ">
             <!-- Charts with toggle functionality -->
             <div class="md:col-span-2 w-full">
@@ -21,295 +15,238 @@
                 <option value="risk">Early Warning</option>
                 <option value="career">Career Readiness </option>
               </select>
+         <button  class ="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"  type="submit">Submit</button>
+     
               <div
-                id="rollnoPerformanceChartContainer"
+                id="rollnoChartContainer"
                 class="chart-container"
-              >
-              <div
-                id="ChartContainer"
-                class="chart-container"
-              >
-
-                <div class="bg-white rounded-lg border border-gray-200 p-6">
-                  <h3 class="text-lg font-semibold mb-4">
-                    Student Performance Chart
-                  </h3>
-                  <canvas id="rollnoPerformanceChart"></canvas>
-                </div>
+                data-rollno="{{ rollno }}"
+                data-pgmid="{{ program_id }}"
+              ></div>
+                             
               </div>
             </div>
-          </div>
+          
 
-  
+  </form>
 
   <script>
-    
-    document.getElementById('student-form').addEventListener('submit', (e) => {
+    window.semesterCharts = [];
+    window.currentChart = null;
+    const chartTypeMap = {
+      gpa: "line",
+      attendance: "bar",
+      subj_marks: "bar",
+      risk: "bar", // placeholder; replace with histogram plugin if needed
+      career: "bar" // placeholder
+      };
+    document.getElementById('student-form').addEventListener('submit', async(e) => {
       e.preventDefault();
-      const optionselected = document.getElementById("chartTypeSelect1").value;
-      if(optionselected==="gpa")
-        type="line";
-      else if(optionselected==="attendence")
-        type="bar";
-      else if(optionselected==="subj_marks")
-        type="bar";
-      else if(optionselected==="risk")
-        type="hist";
-        
-      else
-        type="bar";
-      getstudentdata({charttype:type,markstype:optionselected});  
+
+      const markstype = document.getElementById("chartTypeSelect1").value;
+      const charttype = chartTypeMap[markstype] || "bar";
+      getstudentdata({charttype,markstype});  
       
     });
 
+ 
 
-  document
-        .getElementById("chartTypeSelect1")
-        .addEventListener("change", function () {
-          type = this.value;
-          
-        });
-
-      // Example chart rendering function (using Chart.js)
-      function renderChart1(charttype,markstype,data) {
-        console.log("data",data);
-        if (window.semesterCharts) {
-         window.semesterCharts.forEach(chart => chart.destroy());
+     async function getstudentdata({ charttype ,markstype } = {}) {
+      
+        const container = document.getElementById('rollnoChartContainer');
+            
+        rollno=container.dataset.rollno
+        pgmid=container.dataset.pgmid
+        const params = new URLSearchParams();
+        
+        params.append("rollno", rollno);
+        params.append("program_id", pgmid);
+        let url = "";
+        if (markstype === "gpa") url = `/academic/api/get_sgpa_average?${params.toString()}`;
+        if (markstype === "subj_marks") url = `/academic/api/get_sub_gradepoint?${params.toString()}`;
+        
+        if (!url) {
+        console.warn("No URL mapped for:", markstype);
+        return;
         }
-        const ctx = document
-          .getElementById("rollnoPerformanceChart")
-          .getContext("2d");
-        // Destroy previous chart if needed
-        if (window.currentChart) window.currentChart.destroy();
-        // Example data
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
 
-        if(markstype==="grades")
-        {
-          console.log("Data for grades chart1234",data);
+        container.style.display = "";
+        renderChart1({charttype, markstype, data});
+  
+
+}
+
+function renderChart1({ charttype, markstype, data }) {
+        console.log("Arush data", data);
+        // Grades distribution (if you later add it)
+        if (markstype === "grades") {
+          const ctx = resetCharts();
           const gradesdata = {
-          labels: data.map(d => d.internal_grade), // e.g., ["A", "B", "C"]
-          datasets: [{ label: "Count", data:data.map(d => d.count)  }],
-        };
-        window.currentChart = new Chart(ctx, {
-          type: charttype, // 'bar', 'line', 'pie', etc.
-          data: gradesdata,
-          options: {},
-        });
+            labels: data.map((d) => d.internal_grade),
+            datasets: [{ label: "Count", data: data.map((d) => d.count) }],
+          };
+          window.currentChart = new Chart(ctx, { type: charttype, data: gradesdata, options: {} });
           return;
         }
 
-        if(markstype==="subj_marks"){
-          drawgradechart(data);
-         
+        if (markstype === "subj_marks") {
+          drawSubjectChartsBySemester(data);
           return;
         }
-        if(markstype==="gpa"){
-          const labels = [];
-          // peeraverage
-           for (const row of data.peeraverage) {
+
+        if (markstype === "gpa") {
+          renderGpaTrend(data);
+          return;
+        }
+
+        // TODO: attendance / risk / career renderers
+        const ctx = resetCharts();
+        window.currentChart = new Chart(ctx, {
+          type: charttype,
+          data: { labels: [], datasets: [] },
+          options: { plugins: { title: { display: true, text: `${markstype} (not yet implemented)` } } },
+        });
+      }
+
+
+function resetCharts() {
+// destroy multi-semester charts
+if (window.semesterCharts && window.semesterCharts.length) {
+window.semesterCharts.forEach((ch) => ch.destroy());
+window.semesterCharts = [];
+}
+// destroy single canvas chart
+if (window.currentChart) {
+window.currentChart.destroy();
+window.currentChart = null;
+}
+// clear container and re-insert a fresh canvas
+const container = document.getElementById("rollnoChartContainer");
+container.innerHTML = "";
+const canvas = document.createElement("canvas");
+canvas.id = "main-canvas";
+container.appendChild(canvas);
+return canvas.getContext("2d");
+}
+function renderGpaTrend(data) {
+        const ctx = resetCharts();
+
+        // Collect labels (semesters)
+        const labels = [];
+        for (const row of (data.peeraverage || [])) {
           if (!labels.includes(row.semester)) labels.push(row.semester);
-          }
-          console.log("Labels found:", labels);
-          const bySem = {peeraverage:{},studentavg:{}};
-          for (const row of data.peeraverage) {
-          const semName = row.semester;
-           
-          if (!bySem.peeraverage[semName]) bySem.peeraverage[semName] = {};
-          bySem.peeraverage[semName]= Number(row.sgpa);
-          
-          }
-   //
-          for (const row of data.studentavg) {
-          const semName = row.semester;
-           
-          if (!bySem.studentavg[semName]) bySem.studentavg[semName] = {};
-          bySem.studentavg[semName]= Number(row.sgpa);
-          
-          }
-          console.log("Averages found:", bySem);
-          // Simple distinct color generator
+        }
+        for (const row of (data.studentavg || [])) {
+          if (!labels.includes(row.semester)) labels.push(row.semester);
+        }
+
+        // Build series
+        const bySem = { peeraverage: {}, studentavg: {} };
+        for (const row of (data.peeraverage || [])) bySem.peeraverage[row.semester] = Number(row.sgpa);
+        for (const row of (data.studentavg || [])) bySem.studentavg[row.semester] = Number(row.sgpa);
+
         const colorFor = (i) => {
-          const hue = (i * 47) % 360;         // spread hues
+          const hue = (i * 47) % 360;
           const solid = `hsl(${hue} 70% 45%)`;
           const fill  = `hsl(${hue} 70% 45% / 0.2)`;
           return { solid, fill };
         };
 
-        const averages = Object.keys(bySem);
-        console.log("Keys found:", averages);
-        const datasets = averages.map((name, i) => {
-          console.log("Processing dataset for:", name,i);
-    const { solid, fill } = colorFor(i);
-    return {
-      label: name,
-      data: labels.map(r => bySem[name][r] ?? null), // align to roll numbers
-      borderColor: solid,
-      backgroundColor: fill,
-      borderWidth: 2,
-      pointRadius: 3,
-      tension: 0.25,
-      fill: false,
-      spanGaps: true,
-    };
-  });
+        const seriesNames = Object.keys(bySem);
+        const datasets = seriesNames.map((name, i) => {
+          const { solid, fill } = colorFor(i);
+          return {
+            label: name,
+            data: labels.map((sem) => bySem[name][sem] ?? null),
+            borderColor: solid,
+            backgroundColor: fill,
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.25,
+            fill: false,
+            spanGaps: true,
+          };
+        });
 
-      const compmarksdata = { labels, datasets };
-      console.log("Data for component marks chart",compmarksdata);
+        const chartData = { labels, datasets };
 
-         
-          // Render line chart
-  window.currentChart = new Chart(ctx, {
-    type: "line",
-    data: compmarksdata,
-    options: {
-      responsive: true,
-      interaction: { mode: "index", intersect: false },
-      plugins: {
-        legend: { position: "top" },
-        title: { display: true, text: "GPA Trend" },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y ?? "—"}`
-          }
-        }
-      },
-      scales: {
-        x: {
-          title: { display: true, text: "Semester" },
-          ticks: { autoSkip: true, maxRotation: 0 }
-        },
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: "SGPA" },
-          // suggestedMax: 100, // <- uncomment if your max marks are 100
-        }
-      }
-    }
-  });
-
-
-          return;
-        } 
-        
-        
+        window.currentChart = new Chart(ctx, {
+          type: "line",
+          data: chartData,
+          options: {
+            responsive: true,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { position: "top" },
+              title: { display: true, text: "GPA Trend" },
+              tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y ?? "—"}` } },
+            },
+            scales: {
+              x: { title: { display: true, text: "Semester" }, ticks: { autoSkip: true, maxRotation: 0 } },
+              y: { beginAtZero: true, title: { display: true, text: "SGPA" } },
+            },
+          },
+        });
       }
 
-
-    async function getstudentdata({ charttype ,markstype } = {}) {
-      
-      const container = document.getElementById('rollno_chart_Container');
-      
-  rollno=container.dataset.rollno
-  pgmid=container.dataset.pgmid
-  const params = new URLSearchParams();
-  console.log("Fetching data for rollno:", rollno, "program_id:", pgmid);
-  
-  params.append("rollno", rollno);
-  params.append("program_id", pgmid);
-  let url = "";
-  if (markstype === "gpa") url = `/academic/api/get_sgpa_average?${params.toString()}`;
-  if (markstype === "subj_marks") url = `/academic/api/get_sub_gradepoint?${params.toString()}`;
-  
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-
-  // Toggle chart canvas vs histogram image
-  
-    // show canvas container, hide histogram
-    document.getElementById("rollno_chart_Container").style.display = "";
-    
-    renderChart1(charttype, markstype, data);
-  
-
-  // ... (keep your table update code as-is)
-}
-
-function drawgradechart(data){
-// Group data by semester
-const semesterGroups = {};
-
-data.subgrade.forEach(d => {
-  const sem = d.semester;
-  if (!semesterGroups[sem]) {
-    semesterGroups[sem] = [];
-  }
-  semesterGroups[sem].push(d);
-});
-console.log("Grouped Data:", semesterGroups);
-// Remove old charts if any
-if (window.semesterCharts) {
-  window.semesterCharts.forEach(chart => chart.destroy());
-}
-window.semesterCharts = [];
- chart=document.getElementById("ChartContainer")
- console.log("Chart Container",chart);
-// Clear chart container
-document.getElementById("ChartContainer").innerHTML = "";
-
-// Loop through each semester and create chart
-Object.entries(semesterGroups).forEach(([semester, subjects], index) => {
-  const canvasId = `chart-${semester}`;
-
-  // Create canvas dynamically
-  const canvas = document.createElement('canvas');
-  canvas.id = canvasId;
-  canvas.width = 600;
-  canvas.height = 400;
-  document.getElementById("ChartContainer").appendChild(canvas);
-
-  const ctx = document.getElementById(canvasId).getContext('2d');
-
-  const labels = subjects.map(d => d.subject);
-  const dataPoints = subjects.map(d => parseFloat(d.grade_point));
-  const colors = labels.map(() => getRandomColor());
-
-  const chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: `Grade Points - ${semester}`,
-        data: dataPoints,
-        backgroundColor: colors,
-        borderColor: colors.map(c => c.replace('0.7', '1')),
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        title: {
-          display: true,
-          text: `Subject-wise Grade Points for ${semester}`,
-          font: { size: 16 }
+      function drawSubjectChartsBySemester(data) {
+        // Destroy any prior charts and clear container (no main canvas for multi-charts)
+        if (window.semesterCharts && window.semesterCharts.length) {
+          window.semesterCharts.forEach((ch) => ch.destroy());
+          window.semesterCharts = [];
         }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Grade Point'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: 'Subject Code'
-          }
-        }
+        const container = document.getElementById("rollnoChartContainer");
+        container.innerHTML = "";
+
+        // Group by semester
+        const groups = {};
+        (data.subgrade || []).forEach((row) => {
+          const sem = row.semester;
+          (groups[sem] ||= []).push(row);
+        });
+
+        // Build a chart per semester
+        Object.entries(groups).forEach(([semester, subjects], idx) => {
+          const wrap = document.createElement("div");
+          wrap.className = "bg-white rounded-lg border border-gray-200 p-4 mb-4";
+
+          const h = document.createElement("h3");
+          h.className = "text-lg font-semibold mb-2";
+          h.textContent = `Subject-wise Grade Points — ${semester}`;
+          wrap.appendChild(h);
+
+          const canvas = document.createElement("canvas");
+          wrap.appendChild(canvas);
+          container.appendChild(wrap);
+
+          const labels = subjects.map((d) => d.subject);
+          const dataPoints = subjects.map((d) => Number(d.grade_point));
+          const colors = labels.map(() => randomColor());
+
+          const ch = new Chart(canvas.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels,
+              datasets: [{ label: `Grade Points — ${semester}` , data: dataPoints, backgroundColor: colors, borderColor: colors.map(c => c.replace('0.7', '1')), borderWidth: 1 }],
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, title: { display: true, text: "Grade Point" } },
+                x: { title: { display: true, text: "Subject Code" } },
+              },
+            },
+          });
+
+          window.semesterCharts.push(ch);
+        });
       }
-    }
-  });
-
-  window.semesterCharts.push(chart);
-});
 
 
-}
- function getRandomColor() {
+ function randomColor() {
   const r = Math.floor(Math.random() * 200);
   const g = Math.floor(Math.random() * 200);
   const b = Math.floor(Math.random() * 200);
