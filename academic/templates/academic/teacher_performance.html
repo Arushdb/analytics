@@ -1,0 +1,12 @@
+<canvas id="teacherTimeline" height="160"></canvas>
+<script>
+async function renderTeacherTimeline(teacherId){
+  const res = await fetch(`/analytics/api/teacher/${teacherId}/performance/`);
+  const data = await res.json();
+  const labels = data.series.map(s => s.month);
+  const values = data.series.map(s => s.avg_percent);
+  const ctx = document.getElementById('teacherTimeline').getContext('2d');
+  if(window.teacherTimelineChart) window.teacherTimelineChart.destroy();
+  window.teacherTimelineChart = new Chart(ctx, { type:'line', data:{ labels, datasets:[{ label:'Avg %', data: values, tension:0.3 }] }, options:{ scales:{ y:{ beginAtZero:true, max:100 } } } });
+}
+</script>

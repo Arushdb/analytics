@@ -14,6 +14,8 @@ from academic.models import CourseEvaluationComponent, ProgramMaster,StudentMark
 from academic.models import StudentMarksSummary,Universitymaster
 from academic.queries import get_components_marks, get_user
 from academic.utils import analyze_marks
+from django.utils import timezone
+
 
 
 #@ensure_csrf_cookie
@@ -90,6 +92,71 @@ def get_univ_sessions(request):
     year_ranges = [f"{r.start_date.year}-{r.end_date.year}" for r in sessions]
     return JsonResponse({
              'years': year_ranges})
+
+# --- Demo data for now (replace with ORM queries later) ---
+def _demo_data():
+    years = [2021, 2022, 2023, 2024, 2025]
+    return {
+        "kpis": {
+            "total_students": 23580,
+            "new_admissions": 4230,
+            "pass_rate": 82,
+            "dropout_rate": 4,
+            "placement_pct": 72,
+            "avg_package_lpa": 4.8,
+            "fees_collected_cr": 215,
+            "pending_dues_cr": 7,
+            "scholarship_cr": 18,
+            "publications": 420,
+            "faculty_student": "1:22",
+            "avg_attendance": 72,
+        },
+        "years": years,
+        "enrollment_trend": [
+            {"year": str(y), "students": v}
+            for y, v in zip(years, [18500, 19600, 21000, 22300, 23580])
+        ],
+        "category_split": [
+            {"name": "GEN", "value": 40},
+            {"name": "OBC", "value": 35},
+            {"name": "SC", "value": 15},
+            {"name": "ST", "value": 5},
+            {"name": "EWS", "value": 5},
+        ],
+        "dept_attendance": [
+            {"dept": "CSE", "attendance": 78},
+            {"dept": "ECE", "attendance": 74},
+            {"dept": "ME", "attendance": 68},
+            {"dept": "CE", "attendance": 70},
+            {"dept": "B.Com", "attendance": 73},
+            {"dept": "MBA", "attendance": 76},
+        ],
+        "placement_trend": [
+            {"year": str(y), "percent": p}
+            for y, p in zip(years, [65, 68, 70, 71, 72])
+        ],
+        "placement_by_program": [
+            {"program": "B.Tech", "placed": 78},
+            {"program": "MBA", "placed": 70},
+            {"program": "B.Com", "placed": 65},
+            {"program": "MCA", "placed": 60},
+        ],
+        "alerts": [
+            {"type": "Dropout", "msg": "Dropout > 10% in B.Sc"},
+            {"type": "Pass %", "msg": "Pass Rate < 50% in Maths Dept"},
+            {"type": "Attendance", "msg": "500 students below 50% attendance"},
+        ],
+        "generated_at": timezone.now().isoformat(),
+    }
+
+# --- Views ---
+def top_level_dashboard(request):
+    data = _demo_data()
+    return render(request, "academic/top_level.html", context=data)
+
+def api_summary(request):
+    return JsonResponse(_demo_data())
+
     
 
 

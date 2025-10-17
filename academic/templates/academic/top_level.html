@@ -1,0 +1,225 @@
+  <div class="max-w-7xl mx-auto p-4 md:p-6">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold">University Data Analytics — Dayalbagh Educational Institute (India)</h1>
+        <p class="text-sm text-gray-500">Academic intelligence for VC / Registrar / Deans</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="{% url 'academic:dashboard_api_summary' %}" class="text-sm underline">JSON API</a>
+        <button id="exportPNG" class="px-3 py-2 rounded-xl bg-white border text-sm">Export PNG</button>
+      </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <section class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-2xl bg-white p-4 border">
+        <div class="text-sm text-gray-500">Students</div>
+        <div class="text-2xl font-bold">{{ kpis.total_students }}</div>
+        <div class="text-xs text-gray-500">New admissions: {{ kpis.new_admissions }}</div>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border">
+        <div class="text-sm text-gray-500">Pass Rate</div>
+        <div class="text-2xl font-bold">{{ kpis.pass_rate }}%</div>
+        <div class="text-xs text-gray-500">Dropout: {{ kpis.dropout_rate }}%</div>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border">
+        <div class="text-sm text-gray-500">Placements</div>
+        <div class="text-2xl font-bold">{{ kpis.placement_pct }}%</div>
+        <div class="text-xs text-gray-500">Avg Package: ₹{{ kpis.avg_package_lpa }} LPA</div>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border">
+        <div class="text-sm text-gray-500">Finance</div>
+        <div class="text-2xl font-bold">₹{{ kpis.fees_collected_cr }} Cr</div>
+        <div class="text-xs text-gray-500">Pending ₹{{ kpis.pending_dues_cr }} Cr • Scholarship ₹{{ kpis.scholarship_cr }} Cr</div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="mt-4 grid gap-4 xl:grid-cols-3">
+       <div class="rounded-2xl bg-white p-4 border xl:col-span-2">
+        <h2 class="font-semibold mb-2">Enrollment Trend (5 years)</h2>
+        <canvas id="enrollChart" height="120"></canvas>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border xl:col-span-2">
+        <h2 class="font-semibold mb-2">Summary Enrollment Trend (5 years)</h2>
+        <canvas id="summaryChart" height="120"></canvas>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border">
+        <h2 class="font-semibold mb-2">Category-wise Split</h2>
+        <canvas id="categoryChart" height="120"></canvas>
+      </div>
+    </section>
+
+    <section class="mt-4 grid gap-4 lg:grid-cols-3">
+      <div class="rounded-2xl bg-white p-4 border">
+        <h2 class="font-semibold mb-2">Average Attendance</h2>
+        <canvas id="attendanceGauge" height="140"></canvas>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border lg:col-span-2">
+        <h2 class="font-semibold mb-2">Department-wise Attendance</h2>
+        <canvas id="deptAttendance" height="120"></canvas>
+      </div>
+    </section>
+
+    <section class="mt-4 grid gap-4 lg:grid-cols-3">
+      <div class="rounded-2xl bg-white p-4 border lg:col-span-2">
+        <h2 class="font-semibold mb-2">Placement Trend</h2>
+        <canvas id="placementTrend" height="120"></canvas>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border">
+        <h2 class="font-semibold mb-2">Placement by Program</h2>
+        <canvas id="placementByProgram" height="120"></canvas>
+      </div>
+    </section>
+
+    <!-- Research & Faculty -->
+    <section class="mt-4 grid gap-4 md:grid-cols-2">
+      <div class="rounded-2xl bg-white p-4 border">
+        <h2 class="font-semibold">Research Output</h2>
+        <div class="text-2xl font-bold">{{ kpis.publications }}</div>
+        <p class="text-xs text-gray-500">Scopus/UGC indexed, incl. patents</p>
+      </div>
+      <div class="rounded-2xl bg-white p-4 border">
+        <h2 class="font-semibold">Faculty-Student Ratio</h2>
+        <div class="text-2xl font-bold">{{ kpis.faculty_student }}</div>
+        <p class="text-xs text-gray-500">Teaching load, advisees</p>
+      </div>
+    </section>
+
+    <!-- Alerts -->
+    <section class="mt-4 rounded-2xl bg-white p-4 border">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold">Alerts & Exceptions</h2>
+        <div class="text-xs text-gray-500">Auto-refreshed daily</div>
+      </div>
+      <div class="mt-2 space-y-2">
+        {% for a in alerts %}
+          <div class="flex items-start gap-3 rounded-xl border p-3">
+            <span class="text-xs inline-flex items-center px-2 py-1 rounded-full border">{{ a.type }}</span>
+            <div class="text-sm">{{ a.msg }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module">
+
+  
+
+    //const ENROLL = JSON.parse('{{ enrollment_trend|safe|escapejs }}');
+    //const CATEGORY = JSON.parse('{{ category_split|safe|escapejs }}');
+   // const DEPT_ATTN = JSON.parse('{{ dept_attendance|safe|escapejs }}');
+   // const PLACE_TREND = JSON.parse('{{ placement_trend|safe|escapejs }}');
+   // const PLACE_BY_PROG = JSON.parse('{{ placement_by_program|safe|escapejs }}');
+   // const AVG_ATTENDANCE = {{ kpis.avg_attendance|default:0 }};
+
+    // Enrollment (Line)
+   
+
+
+  // Directly store the API endpoint (no <a> tag)
+  const endpoint = "{% url 'academic:dashboard_api_summary' %}";
+
+  // Fetch JSON data from server
+  async function loadSummary() {
+    const res = await fetch(endpoint, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  }
+
+  // Convert server data into Chart.js config
+  function toChartConfig(payload) {
+    console.log("Transforming payload:", payload);
+    return {
+      type: 'line',
+      data: {
+        labels: payload.labels,
+        datasets: payload.datasets.map(ds => ({
+          label: ds.label,
+          data: ds.data,
+          tension: 0.3,
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: false
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { enabled: true }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    };
+  }
+
+  // Render chart
+  const ctx = document.getElementById('summaryChart').getContext('2d');
+  let chart;
+  try {
+    const data = await loadSummary();
+    console.log("Loaded chart data:", data);
+    chart = new Chart(ctx, toChartConfig(data));
+  } catch (err) {
+    console.error("Error loading chart data:", err);
+  }
+
+  // Export as PNG
+  document.getElementById('exportPNG').addEventListener('click', () => {
+    if (!chart) return;
+    const url = chart.toBase64Image('image/png', 1.0);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dashboard-summary.png';
+    a.click();
+  });
+
+ new Chart(document.getElementById('enrollChart'), {
+      type: 'line',
+      data: { labels: ENROLL.map(x => x.year), datasets: [{ label: 'Students', data: ENROLL.map(x => x.students), borderWidth: 2, fill: false }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // Category (Pie)
+    new Chart(document.getElementById('categoryChart'), {
+      type: 'pie',
+      data: { labels: CATEGORY.map(x => x.name), datasets: [{ data: CATEGORY.map(x => x.value) }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // Attendance (Gauge as doughnut)
+    new Chart(document.getElementById('attendanceGauge'), {
+      type: 'doughnut',
+      data: { datasets: [{ data: [AVG_ATTENDANCE, 100 - AVG_ATTENDANCE] }] },
+      options: { circumference: 180, rotation: -90, cutout: '70%', plugins: { legend: { display: false } } }
+    });
+
+    // Dept Attendance (Bar)
+    new Chart(document.getElementById('deptAttendance'), {
+      type: 'bar',
+      data: { labels: DEPT_ATTN.map(x => x.dept), datasets: [{ data: DEPT_ATTN.map(x => x.attendance) }] },
+      options: { scales: { y: { suggestedMax: 100 } } }
+    });
+
+    // Placement Trend (Line)
+    new Chart(document.getElementById('placementTrend'), {
+      type: 'line',
+      data: { labels: PLACE_TREND.map(x => x.year), datasets: [{ data: PLACE_TREND.map(x => x.percent), borderWidth: 2, fill: false }] },
+      options: { scales: { y: { suggestedMax: 100 } } }
+    });
+
+    // Placement by Program (Bar)
+    new Chart(document.getElementById('placementByProgram'), {
+      type: 'bar',
+      data: { labels: PLACE_BY_PROG.map(x => x.program), datasets: [{ data: PLACE_BY_PROG.map(x => x.placed) }] },
+      options: { scales: { y: { suggestedMax: 100 } } }
+    });
+
+  </script>

@@ -34,6 +34,8 @@ urlpatterns = [
     path('api/get_sgpa_average/', queries.get_sgpa_average, name='get_sgpa_average'),
     path('api/get_sub_gradepoint/', queries.get_sub_gradepoint, name='get_sub_gradepoint'),
     
+    path("", views.top_level_dashboard, name="dashboard_top"),
+    path("api/summary", views.api_summary, name="dashboard_api_summary"),
     
 
     #path('student-performance/', views.student_performance, name='student_performance'),
