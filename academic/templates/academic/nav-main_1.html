@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nav Flow Mock — University Analytics (Dashboard & Reports)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }</style>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+  <!-- Sidebar -->
+  <aside class="w-64 bg-blue-800 text-white p-4">
+    <div class="text-2xl font-bold mb-6">Univ Analytics</div>
+    <nav class="space-y-2">
+      <a href="#dashboard" class="block px-3 py-2 rounded hover:bg-blue-700">Dashboard</a>
+      <a href="#students" class="block px-3 py-2 rounded hover:bg-blue-700">Students</a>
+      <a href="#teachers" class="block px-3 py-2 rounded hover:bg-blue-700">Teachers</a>
+      <a href="#reports" class="block px-3 py-2 rounded hover:bg-blue-700">Reports</a>
+    </nav>
+  </aside>
+
+  <main class="flex-1 p-6">
+    <header class="flex items-center justify-between mb-6">
+      <h1 id="pageTitle" class="text-2xl font-semibold">Dashboard</h1>
+      <div class="text-sm text-gray-600">Demo user</div>
+    </header>
+
+    <div id="views">
+      <!-- Dashboard -->
+      <section id="view-dashboard">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-white p-4 rounded shadow">
+            <div>Total Students</div>
+            <div class="text-2xl font-bold">420</div>
+            <div class="text-sm text-gray-500">As of this academic year</div>
+          </div>
+          <div class="bg-white p-4 rounded shadow">
+            <div>Average Attendance</div>
+            <div class="text-2xl font-bold">82%</div>
+            <div class="text-sm text-gray-500">Across tracked classes</div>
+          </div>
+          <div class="bg-white p-4 rounded shadow">
+            <div>Overall Pass Rate</div>
+            <div class="text-2xl font-bold">75%</div>
+            <div class="text-sm text-gray-500">Last semester</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="bg-white p-4 rounded shadow">
+            <h3 class="font-medium mb-2">Enrollment Trend (6 yrs)</h3>
+            <canvas id="chartEnrollment" height="160"></canvas>
+          </div>
+          <div class="bg-white p-4 rounded shadow">
+            <h3 class="font-medium mb-2">Pass Rate by Department</h3>
+            <canvas id="chartPassByDept" height="160"></canvas>
+          </div>
+          <div class="bg-white p-4 rounded shadow">
+            <h3 class="font-medium mb-2">Attendance Distribution</h3>
+            <canvas id="chartAttendance" height="160"></canvas>
+          </div>
+        </div>
+
+        <div class="mt-6 bg-white p-4 rounded shadow">
+          <h3 class="font-medium mb-2">Quick Actions</h3>
+          <div class="flex gap-3">
+            <button onclick="location.hash='#reports'" class="px-3 py-1 bg-blue-600 text-white rounded">Open Reports</button>
+            <button onclick="exportDashboardCSV()" class="px-3 py-1 bg-green-600 text-white rounded">Export Dashboard CSV</button>
+            <button onclick="scheduleReportDemo()" class="px-3 py-1 border rounded">Schedule Report</button>
+          </div>
+        </div>
+      </section>
+
+    <!-- Students list with filters -->
+      <section id="view-students" class="hidden">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-xl font-semibold">Students</h2>
+          <div class="flex items-center gap-2">
+            <select id="sessionSelect" class="border rounded px-2 py-1 text-sm">
+              <!-- populated dynamically -->
+            </select>
+            <select id="programSelect" class="border rounded px-2 py-1 text-sm">
+              <option value="">All Programs</option>
+            </select>
+            <select id="subjectFilter" class="border rounded px-2 py-1 text-sm">
+              <option value="">All Subjects</option>
+            </select>
+            <button id="applyFilters" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Apply</button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded shadow overflow-hidden">
+          <table class="min-w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="p-3 text-left">Roll</th>
+                <th class="p-3 text-left">Name</th>
+                <th class="p-3 text-left">Program</th>
+                <th class="p-3 text-left">Year</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Class Detail -->
+      <section id="view-class" class="hidden">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <h2 id="classLabel" class="text-xl font-semibold">Class: —</h2>
+            <p id="classMeta" class="text-sm text-gray-600">Department • Program</p>
+          </div>
+          <div>
+            <button id="backToStudentsBtn" class="text-sm text-blue-600 hover:underline">Back to Students</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-white p-4 rounded shadow">Students: <strong id="clsCount">—</strong></div>
+          <div class="bg-white p-4 rounded shadow">Avg %: <strong id="clsAvg">—</strong></div>
+          <div class="bg-white p-4 rounded shadow">Pass %: <strong id="clsPass">—</strong></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          <div class="bg-white p-4 rounded shadow">
+            <h3 class="font-medium mb-2">Subjects</h3>
+            <div id="classSubjects" class="space-y-2"></div>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow lg:col-span-2">
+            <h3 class="font-medium mb-2">Class Overview (charts)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="p-3 bg-gray-50 rounded"><strong>Avg by Course (placeholder)</strong></div>
+              <div class="p-3 bg-gray-50 rounded"><strong>Pass Rate (placeholder)</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mb-4">
+          <h3 class="font-medium mb-2">Students in Class</h3>
+          <table class="min-w-full">
+            <thead><tr><th class="p-2 text-left">Roll</th><th class="p-2 text-left">Name</th></tr></thead>
+            <tbody id="classStudentsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Subject Detail -->
+      <section id="view-subject" class="hidden">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <h2 id="subjectLabel" class="text-xl font-semibold">Subject — —</h2>
+            <p id="subjectMeta" class="text-sm text-gray-600">Class • Program</p>
+          </div>
+          <div>
+            <button id="backToClassFromSubject" class="text-sm text-blue-600 hover:underline">Back to Class</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-white p-4 rounded shadow">Avg %: <strong id="subAvg">—</strong></div>
+          <div class="bg-white p-4 rounded shadow">Median %: <strong id="subMedian">—</strong></div>
+          <div class="bg-white p-4 rounded shadow">Tests Count: <strong id="subTests">—</strong></div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mb-4">
+          <h3 class="font-medium mb-2">Students marks in this subject</h3>
+          <table class="min-w-full">
+            <thead><tr><th class="p-2 text-left">Roll</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Avg %</th></tr></thead>
+            <tbody id="subjectStudentsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Student Detail -->
+      <section id="view-student" class="hidden">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <h2 id="stuName" class="text-xl font-semibold">Student — —</h2>
+            <p id="stuMeta" class="text-sm text-gray-600">Roll • Program</p>
+          </div>
+          <div>
+            <a id="backToClassLink" class="text-sm text-blue-600 hover:underline" href="#">Back to class</a>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-white p-4 rounded shadow">Latest % <strong id="stuPct">—</strong></div>
+          <div class="bg-white p-4 rounded shadow">Attendance <strong id="stuAtt">—</strong></div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mt-4">
+          <h3 class="font-medium mb-2">Subject-wise Marks</h3>
+          <table class="min-w-full">
+            <thead><tr><th class="p-2 text-left">Subject</th><th class="p-2 text-left">Avg %</th></tr></thead>
+            <tbody id="studentSubjectsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+
+      <!-- Reports list -->
+      <section id="view-reports" class="hidden">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-xl font-semibold">Reports</h2>
+          <div class="flex items-center gap-2">
+            <button id="newReportBtn" class="px-3 py-1 bg-blue-600 text-white rounded">Create Report</button>
+            <select id="reportTypeFilter" class="border rounded px-2 py-1 text-sm">
+              <option value="">All Types</option>
+              <option value="student">Student</option>
+              <option value="class">Class</option>
+              <option value="teacher">Teacher</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mb-4">
+          <h3 class="font-medium mb-2">Saved / Scheduled Reports</h3>
+          <table class="min-w-full">
+            <thead class="bg-gray-50"><tr><th class="p-2 text-left">Name</th><th class="p-2 text-left">Type</th><th class="p-2 text-left">Frequency</th><th class="p-2 text-left">Last Run</th><th class="p-2 text-left">Actions</th></tr></thead>
+            <tbody id="reportsTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow">
+          <h3 class="font-medium mb-2">Ad-hoc Report Builder</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select id="rb_reportType" class="border rounded p-2">
+              <option value="student">Student Performance</option>
+              <option value="class">Class Summary</option>
+              <option value="teacher">Teacher Output</option>
+            </select>
+            <select id="rb_program" class="border rounded p-2"></select>
+            <select id="rb_subject" class="border rounded p-2"><option value="">All Subjects</option></select>
+            <select id="rb_session" class="border rounded p-2"></select>
+            <button id="rb_generate" class="col-span-3 bg-blue-600 text-white px-3 py-2 rounded">Generate Preview</button>
+          </div>
+
+          <div id="rb_preview" class="mt-4"></div>
+        </div>
+      </section>
+
+      <!-- Report Detail -->
+      <section id="view-report-detail" class="hidden">
+        <div class="mb-4 flex items-center justify-between">
+          <div><h2 id="reportTitle" class="text-xl font-semibold">Report — —</h2><p id="reportMeta" class="text-sm text-gray-600">Filters • Schedule</p></div>
+          <div><button id="backToReports" class="text-sm text-blue-600 hover:underline">Back to Reports</button></div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow mb-4">
+          <h3 class="font-medium mb-2">Report Preview</h3>
+          <div id="reportPreviewArea">(Preview table / charts will appear here)</div>
+        </div>
+
+        <div class="flex gap-3">
+          <button id="downloadReportCSV" class="px-3 py-1 bg-green-600 text-white rounded">Download CSV</button>
+          <button id="downloadReportPDF" class="px-3 py-1 border rounded">Download PDF</button>
+          <button id="runReportNow" class="px-3 py-1 bg-blue-600 text-white rounded">Run Now</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+<script>
+// Demo data for charts & reports
+const enrollmentYears = [2019,2020,2021,2022,2023,2024];
+const enrollmentCounts = [300,320,350,370,400,420];
+const passByDept = { 'Computer Science':78, 'Information Technology':72, 'Mathematics':80, 'Physics':70 };
+const attendanceBuckets = { '90-100': 120, '80-89': 200, '70-79': 60, '<70': 40 };
+
+// small reports dataset
+const savedReports = [
+  {id:1, name:'Top failing students', type:'student', freq:'Weekly', last_run:'2025-09-10'},
+  {id:2, name:'Dept pass summary', type:'class', freq:'Monthly', last_run:'2025-09-01'},
+  {id:3, name:'Teacher research output', type:'teacher', freq:'Quarterly', last_run:'2025-06-30'}
+];
+
+//function showView(id){ document.querySelectorAll('#views > section').forEach(s=>s.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); document.getElementById('pageTitle').textContent = id.replace('view-','').toUpperCase(); }
+function showView(name){ hideAll(); views[name].classList.remove('hidden'); document.getElementById('pageTitle').textContent = name.charAt(0).toUpperCase() + name.slice(1); }
+
+// Dashboard charts
+
+function renderDashboardCharts(){
+  // Enrollment line
+  const ctxE = document.getElementById('chartEnrollment').getContext('2d');
+  if(window.enrollmentChart) window.enrollmentChart.destroy();
+  window.enrollmentChart = new Chart(ctxE, { type:'line', data:{ labels: enrollmentYears, datasets:[{ label:'Enrollments', data: enrollmentCounts, fill:false, tension:0.3 }] }, options:{ responsive:true } });
+
+  // Pass by dept - bar
+  const ctxP = document.getElementById('chartPassByDept').getContext('2d');
+  if(window.passDeptChart) window.passDeptChart.destroy();
+  window.passDeptChart = new Chart(ctxP, { type:'bar', data:{ labels: Object.keys(passByDept), datasets:[{ label:'Pass %', data: Object.values(passByDept) }] }, options:{ responsive:true, scales:{ y:{ beginAtZero:true, max:100 } } } });
+
+  // Attendance - doughnut
+  const ctxA = document.getElementById('chartAttendance').getContext('2d');
+  if(window.attChart) window.attChart.destroy();
+  window.attChart = new Chart(ctxA, { type:'doughnut', data:{ labels: Object.keys(attendanceBuckets), datasets:[{ data: Object.values(attendanceBuckets) }] }, options:{ responsive:true } });
+}
+
+// Reports list render and report builder
+function renderReportsList(filterType=''){
+  const tbody = document.getElementById('reportsTableBody'); tbody.innerHTML='';
+  const list = filterType ? savedReports.filter(r=>r.type===filterType) : savedReports;
+  list.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="p-2">${r.name}</td><td class="p-2">${r.type}</td><td class="p-2">${r.freq}</td><td class="p-2">${r.last_run}</td><td class="p-2"><button class="px-2 py-1 border" onclick="openReport(${r.id})">Open</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Open a saved report
+function openReport(id){
+  const rep = savedReports.find(r=>r.id===id);
+  if(!rep) return;
+  q('#reportTitle').textContent = rep.name;
+  q('#reportMeta').textContent = `${rep.type} • ${rep.freq}`;
+  showView('view-report-detail');
+  q('#reportPreviewArea').innerHTML = `<div>Preview for <strong>${rep.name}</strong> (type: ${rep.type}) — sample table/chart here.</div>`;
+}
+
+// Report builder population
+function populateReportBuilder(){
+  const prog = q('#rb_program'); prog.innerHTML = '<option value=\"\">All Programs</option>'; demoPrograms.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; prog.appendChild(o); });
+  const sessionSel = q('#rb_session'); sessionSel.innerHTML = ''; const sessions = Array.from(new Set(demoStudents.map(s=>s.year))).sort(); sessions.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sessionSel.appendChild(o); });
+  // subjects populated when program selected
+  q('#rb_program').addEventListener('change', function(e){
+    const pid = Number(e.target.value);
+    const subs = demoSubjects[pid]||[];
+    const subSel = q('#rb_subject'); subSel.innerHTML = '<option value=\"\">All Subjects</option>'; subs.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; subSel.appendChild(o); });
+  });
+  q('#rb_generate').addEventListener('click', function(){
+    const type = q('#rb_reportType').value;
+    const pid = q('#rb_program').value;
+    const sid = q('#rb_subject').value;
+    const sess = q('#rb_session').value;
+    q('#rb_preview').innerHTML = `<div class="p-3 border rounded">Preview — type: ${type}, program: ${pid||'all'}, subject: ${sid||'all'}, session: ${sess||'all'}</div>`;
+  });
+}
+
+// small helpers
+function q(sel){ return document.querySelector(sel); }
+
+// export dashboard CSV (demo)
+function exportDashboardCSV(){
+  const rows = [['metric','value'], ['total_students',420], ['avg_attendance','82'], ['pass_rate','75']];
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='dashboard_summary.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+// schedule demo
+function scheduleReportDemo(){ alert('Scheduled report (demo): this would open a scheduling dialog in a real app)'); }
+
+
+
+
+
+// initial routing
+//window.addEventListener('hashchange', function(){ handleRouting(); });
+//function handleRouting(){
+ // const h = location.hash.replace(/^#/,'') || 'dashboard';
+  //if(h==='dashboard'){ showView('view-dashboard'); renderDashboardCharts(); return; }
+ // if(h==='reports'){ showView('view-reports'); renderReportsList(); populateReportBuilder(); return; }
+  // other routes fall back to dashboard for this simplified mock
+  //showView('view-dashboard'); renderDashboardCharts();
+//}
+// init
+//document.addEventListener('DOMContentLoaded', function(){ handleRouting(); });
+function renderSubject(programId, year, subjectId){
+  // build subject name
+  const subject = (demoSubjects[programId] || []).find(x=>x.id===subjectId) || {id: subjectId, name: 'Subject '+subjectId};
+  document.getElementById('subjectLabel').textContent = `${subject.name} — ${year}`;
+  document.getElementById('subjectMeta').textContent = `${demoStudents.filter(s=>s.program_id==programId && s.year==year).length} students • Program ${programId}`;
+
+  // students in class
+  const students = demoStudents.filter(s => s.program_id == programId && s.year == year);
+  // per-student average for this subject
+  const per = students.map(st => {
+    const scores = demoScores.filter(ds => ds.student_id===st.id && ds.subject_id===subjectId);
+    const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b.percent,0)/scores.length) : null;
+    return {student: st, avg};
+  });
+
+  // bar chart of students (sorted)
+  const present = per.filter(p=>p.avg !== null).sort((a,b)=>b.avg - a.avg);
+  const labels = present.map(p=>p.student.roll);
+  const values = present.map(p=>p.avg);
+  const ctx = document.getElementById('subjectCanvasBar') || (() => {
+    const canvas = document.createElement('canvas'); canvas.id='subjectCanvasBar'; document.querySelector('#view-subject .bg-white').prepend(canvas); return canvas;
+  })().getContext('2d');
+  if(window.subjectBarChart) window.subjectBarChart.destroy();
+  window.subjectBarChart = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label:'Avg %', data: values }] }, options:{ responsive:true, scales:{ y:{ beginAtZero:true, max:100 } } } });
+
+  // buckets
+  const buckets = {"<40":0,"40-59":0,"60-79":0,"80-100":0};
+  present.forEach(p => {
+    const pct = p.avg;
+    if(pct < 40) buckets["<40"]++;
+    else if(pct < 60) buckets["40-59"]++;
+    else if(pct < 80) buckets["60-79"]++;
+    else buckets["80-100"]++;
+  });
+  const bLabels = Object.keys(buckets), bValues = Object.values(buckets);
+  const ctx2 = document.getElementById('subjectCanvasBuckets') || (()=>{ const c=document.createElement('canvas'); c.id='subjectCanvasBuckets'; document.querySelector('#view-subject .bg-white').prepend(c); return c; })().getContext('2d');
+  if(window.subjectBucketChart) window.subjectBucketChart.destroy();
+  window.subjectBucketChart = new Chart(ctx2, { type:'doughnut', data:{ labels: bLabels, datasets:[{ data: bValues }] } });
+
+  // fill table
+  const tbody = document.getElementById('subjectStudentsBody');
+  tbody.innerHTML = '';
+  per.forEach(p=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="p-2"><a href="#student/${p.student.id}" class="text-blue-600">${p.student.roll}</a></td><td class="p-2">${p.student.name}</td><td class="p-2">${p.avg!==null ? p.avg+'%' : '—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+
+    // hash routing
+    function handleHash(){
+      debugger;
+      const h = location.hash.replace(/^#/, '');
+      if(!h || h === 'dashboard'){ showView('dashboard'); return; }
+      if(h === 'students'){ showView('students'); return; }
+      if(h.startsWith('class/')){
+        const parts = h.split('/'); const prog = parseInt(parts[1]); const yr = parseInt(parts[2]);
+        showView('class'); renderClass(prog, yr); return;
+      }
+      if(h.startsWith('subject/')){
+        const parts = h.split('/'); const prog = parseInt(parts[1]); const yr = parseInt(parts[2]); const sid = parseInt(parts[3]);
+        showView('subject'); renderSubject(prog, yr, sid); return;
+      }
+      if(h.startsWith('student/')){
+        const parts = h.split('/'); const id = parseInt(parts[1]);
+        showView('student'); renderStudent(id); return;
+      }
+      // fallback
+      showView('dashboard');
+    }
+document.addEventListener('DOMContentLoaded', function(){
+    window.addEventListener('hashchange', handleHash)});
+    document.getElementById('backToStudentsBtn').addEventListener('click', ()=>{ location.hash = '#students'; });
+    document.getElementById('backToClassFromSubject').addEventListener('click', ()=>{ location.hash = '#students'; });
+    document.getElementById('q').addEventListener('input', (e)=> renderStudentsFiltered(null, null, null)); // use filters instead of search for performance
+    document.getElementById('programSelect').addEventListener('change', (e)=> populateSubjectFilterForProgram(parseInt(e.target.value) || null));
+    document.getElementById('applyFilters').addEventListener('click', ()=>{
+      const session = document.getElementById('sessionSelect').value;
+      const program = document.getElementById('programSelect').value;
+      const subject = document.getElementById('subjectFilter').value;
+      renderStudentsFiltered(session, program, subject);
+    });
+
+    // initial setup
+    populateFilters();
+    // initial students view shows none until user applies filters - to avoid loading all students
+    function initialStudentsState(){
+      const tbody = document.getElementById('studentsTableBody'); tbody.innerHTML = '<tr><td class="p-4" colspan="4" style="color:#6b7280">Please select Session and/or Program, then click Apply</td></tr>';
+    }
+
+    initialStudentsState();
+
+    // initial route
+    if(!location.hash) location.hash = '#dashboard'; else handleHash();
+
+</script>
+</body>
+</html>

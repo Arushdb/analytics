@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}University Analytics{% endblock %}</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head> 
+
+<body class="bg-gray-100 flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="w-64 bg-blue-800 text-white flex flex-col">
+    <div class="p-4 text-2xl font-bold border-b border-blue-700">
+      DEI Analytics
+    </div>
+    <nav class="flex-1 p-4 space-y-2">
+     
+      <a href="{% url 'academic:management_dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-700">Dashboard</a>
+      <a href="#" class="block px-3 py-2 rounded hover:bg-blue-700">Students</a>
+      <a href="#" class="block px-3 py-2 rounded hover:bg-blue-700">Teachers</a>
+      <a href="#" class="block px-3 py-2 rounded hover:bg-blue-700">Departments</a>
+      <a href="#" class="block px-3 py-2 rounded hover:bg-blue-700">Reports</a>
+    </nav>
+    <div class="p-4 border-t border-blue-700 text-sm">
+      Logged in as {{ request.user.username }}
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col">
+    <!-- Top bar -->
+    <header class="bg-white shadow p-4 flex justify-between items-center">
+      <h1 class="text-xl font-semibold">{% block page_title %}{% endblock %}</h1>
+      <div>
+        <a href="/logout/" class="text-blue-600 hover:underline">Logout</a>
+      </div>
+    </header>
+
+    <!-- Page content -->
+    <main class="p-6 flex-1 overflow-y-auto">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+
